@@ -15,9 +15,6 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             padding: 20px;
         }
 
@@ -26,8 +23,8 @@
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             padding: 40px;
-            max-width: 600px;
-            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
         }
 
         h1 {
@@ -37,7 +34,7 @@
             font-size: 2em;
         }
 
-        .candidate-header {
+        .position-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border-radius: 15px;
@@ -46,15 +43,8 @@
             text-align: center;
         }
 
-        .candidate-header h2 {
+        .position-header h2 {
             font-size: 1.5em;
-            margin-bottom: 8px;
-        }
-
-        .candidate-header .position {
-            font-size: 1.1em;
-            opacity: 0.95;
-            font-weight: 500;
         }
 
         .waiting {
@@ -78,6 +68,38 @@
             font-weight: bold;
             color: #764ba2;
             margin: 20px 0;
+        }
+
+        .waiting-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .candidate-section {
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            background: #fafafa;
+        }
+
+        .candidate-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .candidate-name-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .candidate-name-header h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-bottom: 10px;
         }
 
         .results-grid {
@@ -109,46 +131,99 @@
         }
 
         .result-number {
-            font-size: 4em;
+            font-size: 3.5em;
             font-weight: bold;
         }
 
-        .vote-details {
-            background: #f8f9fa;
-            border-radius: 15px;
+        .summary {
+            background: #e8f5e9;
+            border: 2px solid #4caf50;
+            border-radius: 12px;
             padding: 20px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .summary h3 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+
+        .summary p {
+            color: #388e3c;
+            font-size: 1.05em;
+        }
+
+        .vote-details {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
             margin-top: 20px;
         }
 
         .vote-details h3 {
             color: #333;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             font-size: 1.2em;
         }
 
         .vote-item {
-            background: white;
-            padding: 12px 15px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
             border-left: 4px solid #667eea;
+        }
+
+        .vote-item:last-child {
+            margin-bottom: 0;
         }
 
         .vote-item.not-inclined {
             border-left-color: #f5576c;
         }
 
+        .vote-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
         .voter-name {
             font-weight: 600;
             color: #333;
+            font-size: 1.05em;
         }
 
         .voter-choice {
-            color: #666;
-            font-size: 0.9em;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+            background: #667eea;
+            color: white;
+        }
+
+        .voter-choice.not-inclined {
+            background: #f5576c;
+        }
+
+        .vote-feedback {
+            color: #555;
+            line-height: 1.6;
+            margin-top: 10px;
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            font-size: 0.95em;
+        }
+
+        .vote-timestamp {
+            color: #999;
+            font-size: 0.8em;
+            margin-top: 8px;
         }
 
         .refresh-btn {
@@ -162,31 +237,12 @@
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            margin-top: 20px;
+            margin-top: 30px;
         }
 
         .refresh-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-        }
-
-        .summary {
-            background: #e8f5e9;
-            border: 2px solid #4caf50;
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 25px;
-        }
-
-        .summary h2 {
-            color: #2e7d32;
-            margin-bottom: 10px;
-        }
-
-        .summary p {
-            color: #388e3c;
-            font-size: 1.1em;
         }
 
         .loading {
@@ -208,6 +264,12 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -247,21 +309,23 @@
             const contentDiv = document.getElementById('content');
             contentDiv.className = 'waiting';
 
-            let candidateHTML = '';
-            if (data.candidate_name && data.position) {
-                candidateHTML = `
-                    <div class="candidate-header">
-                        <h2>${data.candidate_name}</h2>
-                        <div class="position">${data.position}</div>
+            let positionHTML = '';
+            if (data.position) {
+                positionHTML = `
+                    <div class="position-header">
+                        <h2>${data.position}</h2>
                     </div>
                 `;
             }
 
             contentDiv.innerHTML = `
-                ${candidateHTML}
+                ${positionHTML}
                 <h2>Waiting for Votes</h2>
                 <div class="vote-count">${data.votes_received} / ${data.votes_needed}</div>
                 <p>${data.message}</p>
+                <div class="waiting-info">
+                    <strong>${data.total_voters}</strong> voter(s) need to vote on <strong>${data.total_candidates}</strong> candidate(s)
+                </div>
             `;
         }
 
@@ -269,67 +333,91 @@
             const contentDiv = document.getElementById('content');
             contentDiv.className = '';
 
-            // Candidate info
-            let candidateHTML = '';
-            if (data.candidate_name && data.position) {
-                candidateHTML = `
-                    <div class="candidate-header">
-                        <h2>${data.candidate_name}</h2>
-                        <div class="position">${data.position}</div>
+            // Position header
+            let positionHTML = '';
+            if (data.position) {
+                positionHTML = `
+                    <div class="position-header">
+                        <h2>${data.position}</h2>
                     </div>
                 `;
             }
 
-            // Determine outcome
-            let summaryHTML = '';
-            if (data.inclined > data.not_inclined) {
-                summaryHTML = `
-                    <div class="summary">
-                        <h2>Majority: Inclined</h2>
-                        <p>${data.inclined} out of ${data.total_votes} votes</p>
-                    </div>
-                `;
-            } else if (data.not_inclined > data.inclined) {
-                summaryHTML = `
-                    <div class="summary" style="background: #ffebee; border-color: #f44336;">
-                        <h2 style="color: #c62828;">Majority: Not Inclined</h2>
-                        <p style="color: #d32f2f;">${data.not_inclined} out of ${data.total_votes} votes</p>
-                    </div>
-                `;
-            } else {
-                summaryHTML = `
-                    <div class="summary" style="background: #fff3e0; border-color: #ff9800;">
-                        <h2 style="color: #e65100;">Tied Vote</h2>
-                        <p style="color: #ef6c00;">${data.inclined} - ${data.not_inclined}</p>
-                    </div>
-                `;
-            }
+            // Build sections for each candidate
+            let candidatesHTML = '';
+            if (data.candidates && data.candidates.length > 0) {
+                candidatesHTML = data.candidates.map(candidate => {
+                    // Determine outcome for this candidate
+                    let summaryHTML = '';
+                    if (candidate.inclined > candidate.not_inclined) {
+                        summaryHTML = `
+                            <div class="summary">
+                                <h3>Majority: Inclined</h3>
+                                <p>${candidate.inclined} out of ${candidate.total_votes} vote(s)</p>
+                            </div>
+                        `;
+                    } else if (candidate.not_inclined > candidate.inclined) {
+                        summaryHTML = `
+                            <div class="summary" style="background: #ffebee; border-color: #f44336;">
+                                <h3 style="color: #c62828;">Majority: Not Inclined</h3>
+                                <p style="color: #d32f2f;">${candidate.not_inclined} out of ${candidate.total_votes} vote(s)</p>
+                            </div>
+                        `;
+                    } else {
+                        summaryHTML = `
+                            <div class="summary" style="background: #fff3e0; border-color: #ff9800;">
+                                <h3 style="color: #e65100;">Tied Vote</h3>
+                                <p style="color: #ef6c00;">${candidate.inclined} - ${candidate.not_inclined}</p>
+                            </div>
+                        `;
+                    }
 
-            // Build vote details
-            let voteDetailsHTML = data.votes.map(vote => `
-                <div class="vote-item ${vote.choice === 'Not Inclined' ? 'not-inclined' : ''}">
-                    <span class="voter-name">${vote.voter}</span>
-                    <span class="voter-choice">${vote.choice}</span>
-                </div>
-            `).join('');
+                    // Build vote details with feedback
+                    let voteDetailsHTML = '';
+                    if (candidate.votes && candidate.votes.length > 0) {
+                        voteDetailsHTML = candidate.votes.map(vote => {
+                            const timestamp = new Date(vote.timestamp).toLocaleString();
+                            return `
+                                <div class="vote-item ${vote.choice === 'Not Inclined' ? 'not-inclined' : ''}">
+                                    <div class="vote-item-header">
+                                        <span class="voter-name">${vote.voter}</span>
+                                        <span class="voter-choice ${vote.choice === 'Not Inclined' ? 'not-inclined' : ''}">${vote.choice}</span>
+                                    </div>
+                                    ${vote.feedback ? `<div class="vote-feedback">${vote.feedback}</div>` : ''}
+                                    <div class="vote-timestamp">Submitted: ${timestamp}</div>
+                                </div>
+                            `;
+                        }).join('');
+                    }
+
+                    return `
+                        <div class="candidate-section">
+                            <div class="candidate-name-header">
+                                <h2>${candidate.name}</h2>
+                            </div>
+                            ${summaryHTML}
+                            <div class="results-grid">
+                                <div class="result-card">
+                                    <div class="result-label">Inclined</div>
+                                    <div class="result-number">${candidate.inclined}</div>
+                                </div>
+                                <div class="result-card not-inclined">
+                                    <div class="result-label">Not Inclined</div>
+                                    <div class="result-number">${candidate.not_inclined}</div>
+                                </div>
+                            </div>
+                            <div class="vote-details">
+                                <h3>Detailed Feedback</h3>
+                                ${voteDetailsHTML}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
 
             contentDiv.innerHTML = `
-                ${candidateHTML}
-                ${summaryHTML}
-                <div class="results-grid">
-                    <div class="result-card">
-                        <div class="result-label">Inclined</div>
-                        <div class="result-number">${data.inclined}</div>
-                    </div>
-                    <div class="result-card not-inclined">
-                        <div class="result-label">Not Inclined</div>
-                        <div class="result-number">${data.not_inclined}</div>
-                    </div>
-                </div>
-                <div class="vote-details">
-                    <h3>Vote Breakdown</h3>
-                    ${voteDetailsHTML}
-                </div>
+                ${positionHTML}
+                ${candidatesHTML}
             `;
         }
 
@@ -344,6 +432,8 @@
                         if (data.complete) {
                             displayResults(data);
                             stopAutoRefresh();
+                        } else {
+                            displayWaiting(data);
                         }
                     });
             }, 5000);

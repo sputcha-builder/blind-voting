@@ -15,9 +15,6 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             padding: 20px;
         }
 
@@ -26,8 +23,8 @@
             border-radius: 20px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             padding: 40px;
-            max-width: 500px;
-            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
         }
 
         h1 {
@@ -44,7 +41,7 @@
             font-size: 0.9em;
         }
 
-        .candidate-info {
+        .position-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border-radius: 15px;
@@ -53,86 +50,338 @@
             text-align: center;
         }
 
-        .candidate-info h2 {
+        .position-header h2 {
             font-size: 1.5em;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
         }
 
-        .candidate-info .position {
-            font-size: 1.1em;
-            opacity: 0.95;
-            font-weight: 500;
+        .email-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
         }
 
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        label {
+        .email-section label {
             display: block;
             margin-bottom: 8px;
             color: #555;
             font-weight: 500;
         }
 
-        input[type="email"] {
+        .email-section input {
             width: 100%;
             padding: 12px 15px;
             border: 2px solid #e0e0e0;
             border-radius: 10px;
             font-size: 16px;
-            transition: border-color 0.3s;
         }
 
-        input[type="email"]:focus {
+        .email-section input:focus {
             outline: none;
             border-color: #667eea;
         }
 
-        .vote-buttons {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 600;
+            color: #333;
         }
 
-        .vote-btn {
-            flex: 1;
-            padding: 18px;
+        .progress-bar span {
+            color: #667eea;
+        }
+
+        .blind-note {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 25px;
+            text-align: center;
+            color: #856404;
+            font-size: 0.9em;
+        }
+
+        .blind-note strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .candidates-list {
+            margin-top: 20px;
+        }
+
+        .candidate-card {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+
+        .candidate-card.voted {
+            border-color: #28a745;
+            background: #f0fff4;
+        }
+
+        .candidate-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .candidate-name {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .vote-status {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .vote-status.not-voted {
+            background: #e0e0e0;
+            color: #666;
+        }
+
+        .vote-status.voted {
+            background: #28a745;
+            color: white;
+        }
+
+        .candidate-choice {
+            color: #666;
+            margin-bottom: 15px;
+            font-size: 0.95em;
+        }
+
+        .candidate-choice strong {
+            color: #333;
+        }
+
+        .btn-vote {
+            padding: 12px 25px;
             border: none;
-            border-radius: 12px;
-            font-size: 18px;
+            border-radius: 10px;
+            font-size: 16px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
-        .vote-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-        }
-
-        .btn-inclined {
+        .btn-vote.primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
 
-        .btn-not-inclined {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        .btn-vote.secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-vote:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: slideUp 0.3s;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .modal-header h3 {
+            color: #333;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+
+        .modal-header .candidate-label {
+            color: #667eea;
+            font-weight: 600;
+            font-size: 1.3em;
+        }
+
+        .vote-options {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .vote-option {
+            flex: 1;
+            padding: 20px;
+            border: 3px solid #e0e0e0;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-align: center;
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .vote-option:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+
+        .vote-option.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
         }
 
-        .vote-btn:disabled {
+        .vote-option.inclined.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .vote-option.not-inclined.selected {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .feedback-section {
+            margin-bottom: 25px;
+            display: none;
+        }
+
+        .feedback-section.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        .feedback-section label {
+            display: block;
+            margin-bottom: 10px;
+            color: #555;
+            font-weight: 600;
+            font-size: 1.05em;
+        }
+
+        .feedback-section textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 15px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .feedback-section textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .feedback-hint {
+            color: #666;
+            font-size: 0.85em;
+            margin-top: 5px;
+            font-style: italic;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .modal-buttons .btn-submit {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .modal-buttons .btn-cancel {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .modal-buttons button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-buttons button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none;
         }
 
         .message {
-            margin-top: 20px;
             padding: 15px;
             border-radius: 10px;
+            margin-top: 20px;
             text-align: center;
             font-weight: 500;
             display: none;
@@ -152,35 +401,7 @@
 
         .message.show {
             display: block;
-        }
-
-        .blind-note {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 25px;
-            text-align: center;
-            color: #856404;
-            font-size: 0.9em;
-        }
-
-        .blind-note strong {
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .not-configured {
-            background: #f8d7da;
-            border: 2px solid #f5c6cb;
-            border-radius: 15px;
-            padding: 30px;
-            text-align: center;
-            color: #721c24;
-        }
-
-        .not-configured h2 {
-            margin-bottom: 15px;
+            animation: fadeIn 0.3s;
         }
 
         .loading {
@@ -203,134 +424,106 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .not-configured {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            color: #721c24;
+        }
+
+        .not-configured h2 {
+            margin-bottom: 15px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Loading State -->
         <div id="loadingDiv" class="loading">
             <div class="spinner"></div>
             <p>Loading voting information...</p>
         </div>
 
+        <!-- Not Configured State -->
         <div id="notConfiguredDiv" class="not-configured" style="display: none;">
             <h2>Voting Not Available</h2>
             <p>The voting system has not been configured yet. Please contact the administrator.</p>
         </div>
 
+        <!-- Main Voting Interface -->
         <div id="votingDiv" style="display: none;">
             <h1>Blind Voting</h1>
-            <p class="subtitle">Cast your vote confidentially</p>
+            <p class="subtitle">Cast your votes confidentially</p>
 
-            <div id="candidateInfo" class="candidate-info">
-                <h2 id="candidateName">Loading...</h2>
-                <div class="position" id="positionName">Loading...</div>
+            <div class="position-header">
+                <h2 id="positionName">Position</h2>
             </div>
 
             <div class="blind-note">
                 <strong>This is a blind vote</strong>
-                Results will only be revealed after all <span id="totalVoters">-</span> votes are submitted
+                Results will only be revealed after all votes are submitted
             </div>
 
-            <div class="form-group">
+            <div class="email-section">
                 <label for="voterEmail">Your Email</label>
-                <input type="email" id="voterEmail" placeholder="Enter your email" autocomplete="email">
+                <input type="email" id="voterEmail" placeholder="Enter your email and press Enter" autocomplete="email">
+                <div id="emailPrompt" style="color: #666; font-size: 0.9em; margin-top: 8px; display: none;">
+                    Please enter your email above to see candidates
+                </div>
             </div>
 
-            <div class="vote-buttons">
-                <button class="vote-btn btn-inclined" onclick="submitVote('Inclined')">
+            <div class="progress-bar" id="progressBar" style="display: none;">
+                Voted on <span id="progressText">0 of 0</span> candidates
+            </div>
+
+            <div class="candidates-list" id="candidatesList">
+                <!-- Candidate cards will be inserted here -->
+            </div>
+
+            <div id="globalMessage" class="message"></div>
+        </div>
+    </div>
+
+    <!-- Voting Modal -->
+    <div id="votingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Voting for</h3>
+                <div class="candidate-label" id="modalCandidateName">Candidate Name</div>
+            </div>
+
+            <div class="vote-options">
+                <div class="vote-option inclined" data-choice="Inclined" onclick="selectChoice('Inclined')">
                     Inclined
-                </button>
-                <button class="vote-btn btn-not-inclined" onclick="submitVote('Not Inclined')">
+                </div>
+                <div class="vote-option not-inclined" data-choice="Not Inclined" onclick="selectChoice('Not Inclined')">
                     Not Inclined
-                </button>
+                </div>
             </div>
 
-            <div id="message" class="message"></div>
+            <div id="feedbackSection" class="feedback-section">
+                <label id="feedbackLabel">Feedback</label>
+                <textarea id="feedbackText" placeholder="Enter your feedback..."></textarea>
+                <div class="feedback-hint">Optional but encouraged</div>
+            </div>
+
+            <div class="modal-buttons">
+                <button class="btn-submit" onclick="submitCurrentVote()" id="submitBtn" disabled>Submit Vote</button>
+                <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+            </div>
+
+            <div id="modalMessage" class="message"></div>
         </div>
     </div>
 
     <script>
-        function loadConfig() {
-            fetch('/api/config')
-                .then(response => response.json())
-                .then(data => {
-                    const loadingDiv = document.getElementById('loadingDiv');
-                    const notConfiguredDiv = document.getElementById('notConfiguredDiv');
-                    const votingDiv = document.getElementById('votingDiv');
-
-                    if (data.is_configured) {
-                        // Show voting interface
-                        loadingDiv.style.display = 'none';
-                        notConfiguredDiv.style.display = 'none';
-                        votingDiv.style.display = 'block';
-
-                        // Update candidate info
-                        document.getElementById('candidateName').textContent = data.candidate_name;
-                        document.getElementById('positionName').textContent = data.position;
-                        document.getElementById('totalVoters').textContent = data.allowed_emails.length;
-
-                        // Pre-fill email if provided in URL
-                        prefillEmail();
-                    } else {
-                        // Show not configured message
-                        loadingDiv.style.display = 'none';
-                        notConfiguredDiv.style.display = 'block';
-                        votingDiv.style.display = 'none';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading config:', error);
-                    const loadingDiv = document.getElementById('loadingDiv');
-                    loadingDiv.innerHTML = '<p style="color: red;">Error loading voting configuration</p>';
-                });
-        }
-
-        function submitVote(choice) {
-            const voterEmail = document.getElementById('voterEmail').value.trim();
-            const messageDiv = document.getElementById('message');
-            const buttons = document.querySelectorAll('.vote-btn');
-
-            if (!voterEmail) {
-                showMessage('Please enter your email', 'error');
-                return;
-            }
-
-            // Disable buttons
-            buttons.forEach(btn => btn.disabled = true);
-
-            fetch('/api/vote', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    voter_email: voterEmail,
-                    choice: choice
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    showMessage(data.message, 'success');
-                    // Keep buttons disabled on success
-                    document.getElementById('voterEmail').disabled = true;
-                } else {
-                    showMessage(data.message, 'error');
-                    // Re-enable buttons on error
-                    buttons.forEach(btn => btn.disabled = false);
-                }
-            })
-            .catch(error => {
-                showMessage('Error submitting vote. Please try again.', 'error');
-                buttons.forEach(btn => btn.disabled = false);
-            });
-        }
-
-        function showMessage(text, type) {
-            const messageDiv = document.getElementById('message');
-            messageDiv.textContent = text;
-            messageDiv.className = 'message ' + type + ' show';
-        }
+        let currentConfig = null;
+        let voterProgress = [];
+        let currentCandidateId = null;
+        let selectedChoice = null;
 
         function getEmailFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -347,13 +540,260 @@
             }
         }
 
-        // Allow Enter key to submit
+        function loadConfig() {
+            fetch('/api/config')
+                .then(response => response.json())
+                .then(data => {
+                    const loadingDiv = document.getElementById('loadingDiv');
+                    const notConfiguredDiv = document.getElementById('notConfiguredDiv');
+                    const votingDiv = document.getElementById('votingDiv');
+
+                    if (data.is_configured) {
+                        currentConfig = data;
+                        loadingDiv.style.display = 'none';
+                        notConfiguredDiv.style.display = 'none';
+                        votingDiv.style.display = 'block';
+
+                        document.getElementById('positionName').textContent = data.position;
+                        prefillEmail();
+
+                        // Load voter progress if email is filled
+                        const email = document.getElementById('voterEmail').value;
+                        if (email) {
+                            loadVoterProgress(email);
+                        } else {
+                            // Show prompt if no email pre-filled
+                            document.getElementById('emailPrompt').style.display = 'block';
+                        }
+                    } else {
+                        loadingDiv.style.display = 'none';
+                        notConfiguredDiv.style.display = 'block';
+                        votingDiv.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading config:', error);
+                    const loadingDiv = document.getElementById('loadingDiv');
+                    loadingDiv.innerHTML = '<p style="color: red;">Error loading voting configuration</p>';
+                });
+        }
+
+        function loadVoterProgress(email) {
+            if (!email) return;
+
+            // Hide email prompt and show progress bar
+            document.getElementById('emailPrompt').style.display = 'none';
+            document.getElementById('progressBar').style.display = 'block';
+
+            fetch('/api/voter/progress', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ voter_email: email })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    voterProgress = data.candidates;
+                    updateCandidatesList();
+                    updateProgress(data.votes_submitted, data.total_candidates);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading voter progress:', error);
+            });
+        }
+
+        function updateProgress(voted, total) {
+            document.getElementById('progressText').textContent = `${voted} of ${total}`;
+        }
+
+        function updateCandidatesList() {
+            const candidatesList = document.getElementById('candidatesList');
+            candidatesList.innerHTML = '';
+
+            voterProgress.forEach(candidate => {
+                const card = document.createElement('div');
+                card.className = `candidate-card ${candidate.voted ? 'voted' : ''}`;
+
+                let choiceDisplay = '';
+                if (candidate.voted) {
+                    choiceDisplay = `
+                        <div class="candidate-choice">
+                            <strong>Your vote:</strong> ${candidate.vote.choice}
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="candidate-card-header">
+                        <div class="candidate-name">${candidate.name}</div>
+                        <span class="vote-status ${candidate.voted ? 'voted' : 'not-voted'}">
+                            ${candidate.voted ? 'Voted ✓' : 'Not Voted'}
+                        </span>
+                    </div>
+                    ${choiceDisplay}
+                    <button class="btn-vote ${candidate.voted ? 'secondary' : 'primary'}"
+                            onclick="openVotingModal('${candidate.id}', '${candidate.name}', ${candidate.voted})">
+                        ${candidate.voted ? 'Edit Vote' : 'Vote on ' + candidate.name}
+                    </button>
+                `;
+
+                candidatesList.appendChild(card);
+            });
+        }
+
+        function openVotingModal(candidateId, candidateName, hasExistingVote) {
+            currentCandidateId = candidateId;
+            selectedChoice = null;
+
+            document.getElementById('modalCandidateName').textContent = candidateName;
+            document.getElementById('feedbackText').value = '';
+            document.getElementById('feedbackSection').classList.remove('show');
+            document.getElementById('submitBtn').disabled = true;
+
+            // Clear previous selection
+            document.querySelectorAll('.vote-option').forEach(opt => {
+                opt.classList.remove('selected');
+            });
+
+            // Pre-fill if editing
+            if (hasExistingVote) {
+                const candidateData = voterProgress.find(c => c.id === candidateId);
+                if (candidateData && candidateData.vote) {
+                    selectChoice(candidateData.vote.choice);
+                    document.getElementById('feedbackText').value = candidateData.vote.feedback || '';
+                }
+            }
+
+            document.getElementById('votingModal').classList.add('show');
+            clearModalMessage();
+        }
+
+        function closeModal() {
+            document.getElementById('votingModal').classList.remove('show');
+            selectedChoice = null;
+            currentCandidateId = null;
+        }
+
+        function selectChoice(choice) {
+            selectedChoice = choice;
+
+            // Update button states
+            document.querySelectorAll('.vote-option').forEach(opt => {
+                opt.classList.remove('selected');
+                if (opt.dataset.choice === choice) {
+                    opt.classList.add('selected');
+                }
+            });
+
+            // Show feedback section with appropriate label
+            const feedbackSection = document.getElementById('feedbackSection');
+            const feedbackLabel = document.getElementById('feedbackLabel');
+
+            if (choice === 'Inclined') {
+                feedbackLabel.textContent = 'Summary, Strengths & Watchouts';
+            } else {
+                feedbackLabel.textContent = 'Summary, Flags & Reasons not to hire';
+            }
+
+            feedbackSection.classList.add('show');
+            document.getElementById('submitBtn').disabled = false;
+        }
+
+        function submitCurrentVote() {
+            const email = document.getElementById('voterEmail').value.trim();
+            const feedback = document.getElementById('feedbackText').value.trim();
+
+            if (!email) {
+                showModalMessage('Please enter your email in the main form first', 'error');
+                return;
+            }
+
+            if (!selectedChoice) {
+                showModalMessage('Please select Inclined or Not Inclined', 'error');
+                return;
+            }
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            fetch('/api/vote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    voter_email: email,
+                    candidate_id: currentCandidateId,
+                    choice: selectedChoice,
+                    feedback: feedback
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showModalMessage(data.message, 'success');
+                    // Auto-close and refresh after 2 seconds
+                    setTimeout(() => {
+                        closeModal();
+                        loadVoterProgress(email);
+                    }, 2000);
+                } else {
+                    showModalMessage(data.message, 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit Vote';
+                }
+            })
+            .catch(error => {
+                showModalMessage('Error submitting vote. Please try again.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Vote';
+            });
+        }
+
+        function showModalMessage(text, type) {
+            const messageDiv = document.getElementById('modalMessage');
+            messageDiv.textContent = text;
+            messageDiv.className = 'message ' + type + ' show';
+        }
+
+        function clearModalMessage() {
+            const messageDiv = document.getElementById('modalMessage');
+            messageDiv.className = 'message';
+        }
+
+        function showGlobalMessage(text, type) {
+            const messageDiv = document.getElementById('globalMessage');
+            messageDiv.textContent = text;
+            messageDiv.className = 'message ' + type + ' show';
+
+            setTimeout(() => {
+                messageDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        // Listen for email changes to load progress
         document.addEventListener('DOMContentLoaded', function() {
             const emailInput = document.getElementById('voterEmail');
             if (emailInput) {
+                // Load on blur (Tab key or clicking away)
+                emailInput.addEventListener('blur', function() {
+                    const email = this.value.trim();
+                    if (email && currentConfig) {
+                        loadVoterProgress(email);
+                    }
+                });
+
+                // Load on Enter key press
                 emailInput.addEventListener('keypress', function(e) {
                     if (e.key === 'Enter') {
-                        document.querySelector('.btn-inclined').focus();
+                        const email = this.value.trim();
+                        if (email && currentConfig) {
+                            loadVoterProgress(email);
+                        }
                     }
                 });
             }
