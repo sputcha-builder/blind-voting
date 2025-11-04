@@ -351,16 +351,13 @@ def get_config():
 
 @app.route('/api/config', methods=['POST'])
 def save_configuration():
-    """Save voting configuration"""
+    """Save voting configuration - allows adding candidates even after voting starts"""
     data = request.json
 
-    # Check if voting has started
+    # Load existing config and votes
+    existing_config = load_config()
     votes_data = load_votes()
-    if len(votes_data['votes']) > 0:
-        return jsonify({
-            'success': False,
-            'message': 'Cannot change configuration after voting has started. Reset votes first.'
-        }), 400
+    has_votes = len(votes_data['votes']) > 0
 
     position = data.get('position', '').strip()
     candidates = data.get('candidates', [])
@@ -374,23 +371,59 @@ def save_configuration():
     if not candidates or len(candidates) == 0:
         return jsonify({'success': False, 'message': 'At least one candidate is required'}), 400
 
+    # Build valid candidates list
+    # If votes exist, preserve existing candidate IDs and only allow adding new ones
     valid_candidates = []
-    for i, candidate in enumerate(candidates):
+    existing_candidates = {c['id']: c for c in existing_config.get('candidates', [])}
+
+    # Get the highest existing candidate ID
+    max_id = 0
+    for existing_id in existing_candidates.keys():
+        try:
+            max_id = max(max_id, int(existing_id))
+        except:
+            pass
+
+    for candidate in candidates:
         if isinstance(candidate, dict):
+            candidate_id = candidate.get('id')
             name = candidate.get('name', '').strip()
         else:
+            candidate_id = None
             name = str(candidate).strip()
 
         if not name:
             continue
 
-        valid_candidates.append({
-            'id': str(i + 1),
-            'name': name
-        })
+        # If this is an existing candidate (has ID), preserve it
+        if candidate_id and candidate_id in existing_candidates:
+            valid_candidates.append({
+                'id': candidate_id,
+                'name': name
+            })
+        else:
+            # New candidate - assign next ID
+            max_id += 1
+            valid_candidates.append({
+                'id': str(max_id),
+                'name': name
+            })
 
     if len(valid_candidates) == 0:
         return jsonify({'success': False, 'message': 'At least one candidate is required'}), 400
+
+    # If votes exist, check that we're not removing candidates with votes
+    if has_votes:
+        voted_candidate_ids = set(vote['candidate_id'] for vote in votes_data['votes'])
+        new_candidate_ids = set(c['id'] for c in valid_candidates)
+        removed_candidates = voted_candidate_ids - new_candidate_ids
+
+        if removed_candidates:
+            removed_names = [existing_candidates[cid]['name'] for cid in removed_candidates if cid in existing_candidates]
+            return jsonify({
+                'success': False,
+                'message': f'Cannot remove candidates with existing votes: {", ".join(removed_names)}'
+            }), 400
 
     # Filter out empty emails and validate
     valid_emails = []

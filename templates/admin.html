@@ -391,8 +391,8 @@
         <h2>Voting Configuration</h2>
         <div class="config-card">
             <div id="lockNotice" class="lock-notice">
-                <strong>Configuration Locked</strong>
-                Voting has started. Reset votes to change configuration.
+                <strong>Voting in Progress</strong>
+                You can add new candidates or voters, but cannot remove existing candidates with votes.
             </div>
 
             <div class="form-group">
@@ -487,11 +487,14 @@
     <script>
         let candidateCounter = 0;
 
-        function addCandidateField(name = '') {
+        function addCandidateField(name = '', id = null) {
             const candidatesList = document.getElementById('candidatesList');
             const candidateItem = document.createElement('div');
             candidateItem.className = 'candidate-item';
-            candidateItem.dataset.id = candidateCounter++;
+            candidateItem.dataset.localId = candidateCounter++;
+            if (id) {
+                candidateItem.dataset.candidateId = id; // Store actual candidate ID
+            }
 
             candidateItem.innerHTML = `
                 <input type="text" placeholder="Enter candidate name" value="${name}" class="candidate-name-input">
@@ -506,12 +509,18 @@
         }
 
         function getCandidatesFromForm() {
-            const candidateInputs = document.querySelectorAll('.candidate-name-input');
+            const candidateItems = document.querySelectorAll('.candidate-item');
             const candidates = [];
-            candidateInputs.forEach(input => {
+            candidateItems.forEach(item => {
+                const input = item.querySelector('.candidate-name-input');
                 const name = input.value.trim();
                 if (name) {
-                    candidates.push({name: name});
+                    const candidate = {name: name};
+                    // Include ID if this is an existing candidate
+                    if (item.dataset.candidateId) {
+                        candidate.id = item.dataset.candidateId;
+                    }
+                    candidates.push(candidate);
                 }
             });
             return candidates;
@@ -529,7 +538,7 @@
                     const candidates = data.candidates || [];
                     if (candidates.length > 0) {
                         candidates.forEach(candidate => {
-                            addCandidateField(candidate.name);
+                            addCandidateField(candidate.name, candidate.id);
                         });
                     } else {
                         // Add one empty field by default
@@ -542,32 +551,14 @@
                         emailInput.value = data.allowed_emails[i] || '';
                     }
 
-                    // Handle locked state
+                    // Show warning if voting in progress
                     const isLocked = data.voting_locked;
                     const lockNotice = document.getElementById('lockNotice');
-                    const saveBtn = document.getElementById('saveConfigBtn');
-                    const addBtn = document.getElementById('addCandidateBtn');
 
                     if (isLocked) {
                         lockNotice.classList.add('show');
-                        document.getElementById('position').disabled = true;
-                        document.querySelectorAll('.candidate-name-input').forEach(input => input.disabled = true);
-                        document.querySelectorAll('.btn-remove-candidate').forEach(btn => btn.disabled = true);
-                        addBtn.disabled = true;
-                        for (let i = 1; i <= 5; i++) {
-                            document.getElementById(`email${i}`).disabled = true;
-                        }
-                        saveBtn.disabled = true;
                     } else {
                         lockNotice.classList.remove('show');
-                        document.getElementById('position').disabled = false;
-                        document.querySelectorAll('.candidate-name-input').forEach(input => input.disabled = false);
-                        document.querySelectorAll('.btn-remove-candidate').forEach(btn => btn.disabled = false);
-                        addBtn.disabled = false;
-                        for (let i = 1; i <= 5; i++) {
-                            document.getElementById(`email${i}`).disabled = false;
-                        }
-                        saveBtn.disabled = false;
                     }
                 })
                 .catch(error => {
