@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect
 import json
 import os
 from datetime import datetime
@@ -7,6 +7,30 @@ app = Flask(__name__)
 
 VOTES_FILE = 'votes.json'
 CONFIG_FILE = 'config.json'
+
+# Detect if running in production (Render sets PORT environment variable)
+IS_PRODUCTION = 'RENDER' in os.environ or os.environ.get('PORT') == '10000'
+
+# Force HTTPS in production
+@app.before_request
+def before_request():
+    """Redirect HTTP to HTTPS in production"""
+    if IS_PRODUCTION:
+        # Check if request was made over HTTP (via X-Forwarded-Proto header from proxy)
+        if request.headers.get('X-Forwarded-Proto', 'http') != 'https':
+            url = request.url.replace('http://', 'https://', 1)
+            return redirect(url, code=301)
+
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses"""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    # Add HSTS header in production
+    if IS_PRODUCTION:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
 
 def load_votes():
     """Load votes from JSON file"""
@@ -404,7 +428,7 @@ if __name__ == '__main__':
 
     # Check if running in production or development
     port = int(os.environ.get('PORT', 5001))
-    debug = os.environ.get('FLASK_ENV') != 'production'
+    debug = not IS_PRODUCTION
 
     if debug:
         # Development mode - show helpful URLs
