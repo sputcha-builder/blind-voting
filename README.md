@@ -31,9 +31,17 @@ A simple web application for conducting blind votes with 3 collaborators.
 
 ### For Voters
 1. Open the voting URL
-2. Enter your name
+2. Enter your email (or it will be pre-filled if you received a personalized link)
 3. Click either "Inclined" or "Not Inclined"
 4. You'll see a confirmation (but not the results)
+
+### Personalized Voting Links
+You can send voters personalized links that pre-fill their email address:
+```
+https://your-url.com/vote?email=voter1@example.com
+https://your-url.com/vote?email=voter2@example.com
+```
+If no email parameter is provided, the field will be blank as usual.
 
 ### For You (Admin)
 1. Open the **Results page** to view votes

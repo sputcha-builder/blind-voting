@@ -268,6 +268,9 @@
                         document.getElementById('candidateName').textContent = data.candidate_name;
                         document.getElementById('positionName').textContent = data.position;
                         document.getElementById('totalVoters').textContent = data.allowed_emails.length;
+
+                        // Pre-fill email if provided in URL
+                        prefillEmail();
                     } else {
                         // Show not configured message
                         loadingDiv.style.display = 'none';
@@ -327,6 +330,21 @@
             const messageDiv = document.getElementById('message');
             messageDiv.textContent = text;
             messageDiv.className = 'message ' + type + ' show';
+        }
+
+        function getEmailFromURL() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('email');
+        }
+
+        function prefillEmail() {
+            const emailFromURL = getEmailFromURL();
+            if (emailFromURL) {
+                const emailInput = document.getElementById('voterEmail');
+                if (emailInput) {
+                    emailInput.value = emailFromURL;
+                }
+            }
         }
 
         // Allow Enter key to submit
