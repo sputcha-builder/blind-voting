@@ -54,3 +54,25 @@ A simple web application for conducting blind votes with 3 collaborators.
 
 The server runs on `0.0.0.0:5001`, making it accessible on your local network.
 Your collaborators can access it via your local IP address (shown when server starts).
+
+## Deployment
+
+### Deploy to Render (Free)
+
+1. Go to [Render Dashboard](https://dashboard.render.com/)
+2. Click "New +" → "Web Service"
+3. Connect your GitHub repository: `sputcha-builder/blind-voting`
+4. Configure:
+   - **Name**: `blind-voting` (or your preferred name)
+   - **Environment**: `Python 3`
+   - **Build Command**: `./build.sh`
+   - **Start Command**: `gunicorn app:app`
+   - **Instance Type**: `Free`
+5. Add environment variable:
+   - Key: `FLASK_ENV`
+   - Value: `production`
+6. Click "Create Web Service"
+
+Your app will be live at `https://your-app-name.onrender.com` in a few minutes!
+
+**Note**: Render's free tier may spin down after inactivity. The first request after inactivity will take a few seconds to wake up the service.

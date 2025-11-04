@@ -249,25 +249,32 @@ def save_configuration():
 if __name__ == '__main__':
     # Get local IP for sharing with collaborators
     import socket
-    try:
-        # Try to get local IP by connecting to an external address (doesn't actually send data)
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        local_ip = s.getsockname()[0]
-        s.close()
-    except Exception:
-        # Fallback to localhost if unable to determine local IP
-        local_ip = '127.0.0.1'
 
-    print("\n" + "="*50)
-    print("BLIND VOTING SYSTEM")
-    print("="*50)
-    print(f"\nShare this URL with voters:")
-    print(f"  http://{local_ip}:5001/vote")
-    print(f"\nYour results page:")
-    print(f"  http://localhost:5001/results")
-    print(f"\nAdmin page (reset votes):")
-    print(f"  http://localhost:5001/admin")
-    print("\n" + "="*50 + "\n")
+    # Check if running in production or development
+    port = int(os.environ.get('PORT', 5001))
+    debug = os.environ.get('FLASK_ENV') != 'production'
 
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    if debug:
+        # Development mode - show helpful URLs
+        try:
+            # Try to get local IP by connecting to an external address (doesn't actually send data)
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+        except Exception:
+            # Fallback to localhost if unable to determine local IP
+            local_ip = '127.0.0.1'
+
+        print("\n" + "="*50)
+        print("BLIND VOTING SYSTEM")
+        print("="*50)
+        print(f"\nShare this URL with voters:")
+        print(f"  http://{local_ip}:{port}/vote")
+        print(f"\nYour results page:")
+        print(f"  http://localhost:{port}/results")
+        print(f"\nAdmin page (reset votes):")
+        print(f"  http://localhost:{port}/admin")
+        print("\n" + "="*50 + "\n")
+
+    app.run(host='0.0.0.0', port=port, debug=debug)
