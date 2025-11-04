@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blind Voting</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 0.9em;
+        }
+
+        .candidate-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .candidate-info h2 {
+            font-size: 1.5em;
+            margin-bottom: 8px;
+        }
+
+        .candidate-info .position {
+            font-size: 1.1em;
+            opacity: 0.95;
+            font-weight: 500;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="email"] {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="email"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .vote-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .vote-btn {
+            flex: 1;
+            padding: 18px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .vote-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-inclined {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-not-inclined {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .vote-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 500;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .blind-note {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 25px;
+            text-align: center;
+            color: #856404;
+            font-size: 0.9em;
+        }
+
+        .blind-note strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .not-configured {
+            background: #f8d7da;
+            border: 2px solid #f5c6cb;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            color: #721c24;
+        }
+
+        .not-configured h2 {
+            margin-bottom: 15px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="loadingDiv" class="loading">
+            <div class="spinner"></div>
+            <p>Loading voting information...</p>
+        </div>
+
+        <div id="notConfiguredDiv" class="not-configured" style="display: none;">
+            <h2>Voting Not Available</h2>
+            <p>The voting system has not been configured yet. Please contact the administrator.</p>
+        </div>
+
+        <div id="votingDiv" style="display: none;">
+            <h1>Blind Voting</h1>
+            <p class="subtitle">Cast your vote confidentially</p>
+
+            <div id="candidateInfo" class="candidate-info">
+                <h2 id="candidateName">Loading...</h2>
+                <div class="position" id="positionName">Loading...</div>
+            </div>
+
+            <div class="blind-note">
+                <strong>This is a blind vote</strong>
+                Results will only be revealed after all <span id="totalVoters">-</span> votes are submitted
+            </div>
+
+            <div class="form-group">
+                <label for="voterEmail">Your Email</label>
+                <input type="email" id="voterEmail" placeholder="Enter your email" autocomplete="email">
+            </div>
+
+            <div class="vote-buttons">
+                <button class="vote-btn btn-inclined" onclick="submitVote('Inclined')">
+                    Inclined
+                </button>
+                <button class="vote-btn btn-not-inclined" onclick="submitVote('Not Inclined')">
+                    Not Inclined
+                </button>
+            </div>
+
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+
+    <script>
+        function loadConfig() {
+            fetch('/api/config')
+                .then(response => response.json())
+                .then(data => {
+                    const loadingDiv = document.getElementById('loadingDiv');
+                    const notConfiguredDiv = document.getElementById('notConfiguredDiv');
+                    const votingDiv = document.getElementById('votingDiv');
+
+                    if (data.is_configured) {
+                        // Show voting interface
+                        loadingDiv.style.display = 'none';
+                        notConfiguredDiv.style.display = 'none';
+                        votingDiv.style.display = 'block';
+
+                        // Update candidate info
+                        document.getElementById('candidateName').textContent = data.candidate_name;
+                        document.getElementById('positionName').textContent = data.position;
+                        document.getElementById('totalVoters').textContent = data.allowed_emails.length;
+                    } else {
+                        // Show not configured message
+                        loadingDiv.style.display = 'none';
+                        notConfiguredDiv.style.display = 'block';
+                        votingDiv.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading config:', error);
+                    const loadingDiv = document.getElementById('loadingDiv');
+                    loadingDiv.innerHTML = '<p style="color: red;">Error loading voting configuration</p>';
+                });
+        }
+
+        function submitVote(choice) {
+            const voterEmail = document.getElementById('voterEmail').value.trim();
+            const messageDiv = document.getElementById('message');
+            const buttons = document.querySelectorAll('.vote-btn');
+
+            if (!voterEmail) {
+                showMessage('Please enter your email', 'error');
+                return;
+            }
+
+            // Disable buttons
+            buttons.forEach(btn => btn.disabled = true);
+
+            fetch('/api/vote', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    voter_email: voterEmail,
+                    choice: choice
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.message, 'success');
+                    // Keep buttons disabled on success
+                    document.getElementById('voterEmail').disabled = true;
+                } else {
+                    showMessage(data.message, 'error');
+                    // Re-enable buttons on error
+                    buttons.forEach(btn => btn.disabled = false);
+                }
+            })
+            .catch(error => {
+                showMessage('Error submitting vote. Please try again.', 'error');
+                buttons.forEach(btn => btn.disabled = false);
+            });
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = 'message ' + type + ' show';
+        }
+
+        // Allow Enter key to submit
+        document.addEventListener('DOMContentLoaded', function() {
+            const emailInput = document.getElementById('voterEmail');
+            if (emailInput) {
+                emailInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        document.querySelector('.btn-inclined').focus();
+                    }
+                });
+            }
+        });
+
+        // Load config on page load
+        loadConfig();
+    </script>
+</body>
+</html>
