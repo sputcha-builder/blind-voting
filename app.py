@@ -2,11 +2,17 @@ from flask import Flask, render_template, request, jsonify, redirect
 import json
 import os
 from datetime import datetime
+from anthropic import Anthropic
 
 app = Flask(__name__)
 
 VOTES_FILE = 'votes.json'
 CONFIG_FILE = 'config.json'
+
+# Initialize Anthropic Claude client (API key from environment variable)
+claude_client = None
+if os.environ.get('ANTHROPIC_API_KEY'):
+    claude_client = Anthropic(api_key=os.environ.get('ANTHROPIC_API_KEY'))
 
 # Detect if running in production (Render sets PORT environment variable)
 IS_PRODUCTION = 'RENDER' in os.environ or os.environ.get('PORT') == '10000'
@@ -315,6 +321,89 @@ def reset_votes():
         'is_configured': False
     })
     return jsonify({'success': True, 'message': 'All votes and configuration have been reset'})
+
+@app.route('/api/summarize', methods=['POST'])
+def summarize_feedback():
+    """Summarize raw interview notes using Claude AI"""
+    if not claude_client:
+        return jsonify({
+            'success': False,
+            'message': 'AI summarization not configured. Please set ANTHROPIC_API_KEY environment variable.'
+        }), 400
+
+    data = request.json
+    raw_notes = data.get('notes', '').strip()
+    choice = data.get('choice', '')  # 'Inclined' or 'Not Inclined'
+
+    if not raw_notes:
+        return jsonify({'success': False, 'message': 'Please provide notes to summarize'}), 400
+
+    try:
+        # Create prompt based on voting choice
+        if choice == 'Inclined':
+            user_prompt = f"""Please summarize these interview notes into a concise, well-structured format (max 250 words, about half an A4 page).
+
+Format the output as:
+**Summary:**
+[Brief 2-3 sentence overview]
+
+**Strengths:**
+- [Bullet point 1]
+- [Bullet point 2]
+- [etc]
+
+**Watchouts:**
+- [Bullet point 1]
+- [Bullet point 2]
+- [etc]
+
+Be professional, specific, and actionable.
+
+Raw interview notes:
+{raw_notes}"""
+        else:  # Not Inclined
+            user_prompt = f"""Please summarize these interview notes into a concise, well-structured format (max 250 words, about half an A4 page).
+
+Format the output as:
+**Summary:**
+[Brief 2-3 sentence overview]
+
+**Flags/Concerns:**
+- [Bullet point 1]
+- [Bullet point 2]
+- [etc]
+
+**Reasons Not to Hire:**
+- [Bullet point 1]
+- [Bullet point 2]
+- [etc]
+
+Be professional, specific, and actionable.
+
+Raw interview notes:
+{raw_notes}"""
+
+        response = claude_client.messages.create(
+            model="claude-3-5-haiku-20241022",  # Fast and economical
+            max_tokens=500,
+            temperature=0.3,
+            messages=[
+                {"role": "user", "content": user_prompt}
+            ]
+        )
+
+        summary = response.content[0].text.strip()
+
+        return jsonify({
+            'success': True,
+            'summary': summary
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error generating summary: {str(e)}'
+        }), 500
 
 @app.route('/api/status', methods=['GET'])
 def get_status():

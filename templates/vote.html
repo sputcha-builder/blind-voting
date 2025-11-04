@@ -342,6 +342,30 @@
             font-style: italic;
         }
 
+        .btn-ai-summarize {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-ai-summarize:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 5px 15px rgba(245, 87, 108, 0.3);
+        }
+
+        .btn-ai-summarize:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .modal-buttons {
             display: flex;
             gap: 15px;
@@ -508,8 +532,11 @@
 
             <div id="feedbackSection" class="feedback-section">
                 <label id="feedbackLabel">Feedback</label>
-                <textarea id="feedbackText" placeholder="Enter your feedback..."></textarea>
+                <textarea id="feedbackText" placeholder="Enter your raw interview notes here..."></textarea>
                 <div class="feedback-hint">Optional but encouraged</div>
+                <button type="button" class="btn-ai-summarize" onclick="summarizeWithAI()" id="aiSummarizeBtn">
+                    ✨ Summarize with AI
+                </button>
             </div>
 
             <div class="modal-buttons">
@@ -775,6 +802,55 @@
             setTimeout(() => {
                 messageDiv.classList.remove('show');
             }, 5000);
+        }
+
+        function summarizeWithAI() {
+            const feedbackText = document.getElementById('feedbackText').value.trim();
+
+            if (!feedbackText) {
+                showModalMessage('Please enter some notes to summarize first', 'error');
+                return;
+            }
+
+            if (!selectedChoice) {
+                showModalMessage('Please select Inclined or Not Inclined first', 'error');
+                return;
+            }
+
+            const aiBtn = document.getElementById('aiSummarizeBtn');
+            const originalText = aiBtn.textContent;
+            aiBtn.disabled = true;
+            aiBtn.textContent = '⏳ Summarizing...';
+
+            fetch('/api/summarize', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    notes: feedbackText,
+                    choice: selectedChoice
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('feedbackText').value = data.summary;
+                    showModalMessage('Notes summarized successfully!', 'success');
+                    setTimeout(() => {
+                        clearModalMessage();
+                    }, 3000);
+                } else {
+                    showModalMessage(data.message || 'Error summarizing notes', 'error');
+                }
+                aiBtn.disabled = false;
+                aiBtn.textContent = originalText;
+            })
+            .catch(error => {
+                showModalMessage('Error connecting to AI service', 'error');
+                aiBtn.disabled = false;
+                aiBtn.textContent = originalText;
+            });
         }
 
         // Listen for email changes to load progress
