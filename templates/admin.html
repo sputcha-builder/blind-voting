@@ -306,6 +306,81 @@
             background: #e0e0e0;
             color: #333;
         }
+
+        .candidates-section {
+            margin-bottom: 20px;
+        }
+
+        .candidate-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .candidate-item input {
+            flex: 1;
+            border: none;
+            font-size: 15px;
+            padding: 5px;
+        }
+
+        .candidate-item input:focus {
+            outline: none;
+        }
+
+        .btn-remove-candidate {
+            padding: 8px 15px;
+            background: #f5576c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .btn-remove-candidate:hover {
+            background: #d9405b;
+        }
+
+        .btn-add-candidate {
+            padding: 12px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .btn-add-candidate:hover {
+            background: #5568d3;
+            transform: translateY(-1px);
+        }
+
+        .candidates-list {
+            margin-bottom: 15px;
+        }
+
+        .candidate-badge {
+            display: inline-block;
+            background: #764ba2;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            margin: 3px;
+            font-size: 0.85em;
+        }
     </style>
 </head>
 <body>
@@ -321,13 +396,18 @@
             </div>
 
             <div class="form-group">
-                <label for="candidateName">Candidate Name</label>
-                <input type="text" id="candidateName" placeholder="Enter candidate name">
+                <label for="position">Position</label>
+                <input type="text" id="position" placeholder="Enter position title (e.g., Senior Engineer)">
             </div>
 
-            <div class="form-group">
-                <label for="position">Position</label>
-                <input type="text" id="position" placeholder="Enter position title">
+            <div class="form-group candidates-section">
+                <label>Candidates</label>
+                <div id="candidatesList" class="candidates-list">
+                    <!-- Candidate items will be added here dynamically -->
+                </div>
+                <button type="button" class="btn-add-candidate" onclick="addCandidateField()" id="addCandidateBtn">
+                    + Add Candidate
+                </button>
             </div>
 
             <div class="form-group">
@@ -355,12 +435,18 @@
                 <span class="status-value" id="configStatus">Not Configured</span>
             </div>
             <div class="status-item">
-                <span class="status-label">Candidate:</span>
-                <span class="status-value" id="candidateDisplay">-</span>
-            </div>
-            <div class="status-item">
                 <span class="status-label">Position:</span>
                 <span class="status-value" id="positionDisplay">-</span>
+            </div>
+            <div class="status-item" style="flex-direction: column; align-items: flex-start;">
+                <span class="status-label" style="margin-bottom: 10px;">Candidates:</span>
+                <div id="candidatesDisplay">
+                    <em style="color: #999;">-</em>
+                </div>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Total Voters:</span>
+                <span class="status-value" id="totalVoters">-</span>
             </div>
             <div class="status-item">
                 <span class="status-label">Votes Received:</span>
@@ -369,12 +455,6 @@
             <div class="status-item">
                 <span class="status-label">Votes Needed:</span>
                 <span class="status-value" id="votesNeeded">-</span>
-            </div>
-            <div class="status-item" style="flex-direction: column; align-items: flex-start;">
-                <span class="status-label" style="margin-bottom: 10px;">Voters:</span>
-                <div class="voters-list" id="votersList">
-                    <em style="color: #999;">No votes yet</em>
-                </div>
             </div>
         </div>
 
@@ -405,12 +485,56 @@
     </div>
 
     <script>
+        let candidateCounter = 0;
+
+        function addCandidateField(name = '') {
+            const candidatesList = document.getElementById('candidatesList');
+            const candidateItem = document.createElement('div');
+            candidateItem.className = 'candidate-item';
+            candidateItem.dataset.id = candidateCounter++;
+
+            candidateItem.innerHTML = `
+                <input type="text" placeholder="Enter candidate name" value="${name}" class="candidate-name-input">
+                <button type="button" class="btn-remove-candidate" onclick="removeCandidateField(this)">Remove</button>
+            `;
+
+            candidatesList.appendChild(candidateItem);
+        }
+
+        function removeCandidateField(button) {
+            button.parentElement.remove();
+        }
+
+        function getCandidatesFromForm() {
+            const candidateInputs = document.querySelectorAll('.candidate-name-input');
+            const candidates = [];
+            candidateInputs.forEach(input => {
+                const name = input.value.trim();
+                if (name) {
+                    candidates.push({name: name});
+                }
+            });
+            return candidates;
+        }
+
         function loadConfig() {
             fetch('/api/config')
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('candidateName').value = data.candidate_name || '';
                     document.getElementById('position').value = data.position || '';
+
+                    // Load candidates
+                    const candidatesList = document.getElementById('candidatesList');
+                    candidatesList.innerHTML = ''; // Clear existing
+                    const candidates = data.candidates || [];
+                    if (candidates.length > 0) {
+                        candidates.forEach(candidate => {
+                            addCandidateField(candidate.name);
+                        });
+                    } else {
+                        // Add one empty field by default
+                        addCandidateField();
+                    }
 
                     // Load emails
                     for (let i = 0; i < 5; i++) {
@@ -422,19 +546,24 @@
                     const isLocked = data.voting_locked;
                     const lockNotice = document.getElementById('lockNotice');
                     const saveBtn = document.getElementById('saveConfigBtn');
+                    const addBtn = document.getElementById('addCandidateBtn');
 
                     if (isLocked) {
                         lockNotice.classList.add('show');
-                        document.getElementById('candidateName').disabled = true;
                         document.getElementById('position').disabled = true;
+                        document.querySelectorAll('.candidate-name-input').forEach(input => input.disabled = true);
+                        document.querySelectorAll('.btn-remove-candidate').forEach(btn => btn.disabled = true);
+                        addBtn.disabled = true;
                         for (let i = 1; i <= 5; i++) {
                             document.getElementById(`email${i}`).disabled = true;
                         }
                         saveBtn.disabled = true;
                     } else {
                         lockNotice.classList.remove('show');
-                        document.getElementById('candidateName').disabled = false;
                         document.getElementById('position').disabled = false;
+                        document.querySelectorAll('.candidate-name-input').forEach(input => input.disabled = false);
+                        document.querySelectorAll('.btn-remove-candidate').forEach(btn => btn.disabled = false);
+                        addBtn.disabled = false;
                         for (let i = 1; i <= 5; i++) {
                             document.getElementById(`email${i}`).disabled = false;
                         }
@@ -452,22 +581,23 @@
                 .then(data => {
                     document.getElementById('configStatus').textContent =
                         data.is_configured ? 'Configured' : 'Not Configured';
-                    document.getElementById('candidateDisplay').textContent =
-                        data.candidate_name || '-';
                     document.getElementById('positionDisplay').textContent =
                         data.position || '-';
-                    document.getElementById('votesReceived').textContent = data.total_votes;
-                    document.getElementById('votesNeeded').textContent =
-                        data.is_configured ? data.votes_needed : '-';
 
-                    const votersList = document.getElementById('votersList');
-                    if (data.voters && data.voters.length > 0) {
-                        votersList.innerHTML = data.voters.map(voter =>
-                            `<span class="voter-badge">${voter}</span>`
+                    // Display candidates
+                    const candidatesDisplay = document.getElementById('candidatesDisplay');
+                    if (data.candidates && data.candidates.length > 0) {
+                        candidatesDisplay.innerHTML = data.candidates.map(candidate =>
+                            `<span class="candidate-badge">${candidate.name}</span>`
                         ).join('');
                     } else {
-                        votersList.innerHTML = '<em style="color: #999;">No votes yet</em>';
+                        candidatesDisplay.innerHTML = '<em style="color: #999;">-</em>';
                     }
+
+                    document.getElementById('totalVoters').textContent = data.total_voters || '-';
+                    document.getElementById('votesReceived').textContent = data.total_votes || '0';
+                    document.getElementById('votesNeeded').textContent =
+                        data.is_configured && data.votes_needed > 0 ? data.votes_needed : '-';
                 })
                 .catch(error => {
                     showMessage('Error loading status', 'error');
@@ -475,8 +605,8 @@
         }
 
         function saveConfiguration() {
-            const candidateName = document.getElementById('candidateName').value.trim();
             const position = document.getElementById('position').value.trim();
+            const candidates = getCandidatesFromForm();
             const emails = [];
 
             for (let i = 1; i <= 5; i++) {
@@ -492,8 +622,8 @@
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    candidate_name: candidateName,
                     position: position,
+                    candidates: candidates,
                     allowed_emails: emails
                 })
             })

@@ -13,7 +13,7 @@ def load_votes():
     if os.path.exists(VOTES_FILE):
         with open(VOTES_FILE, 'r') as f:
             return json.load(f)
-    return {'votes': [], 'voters': []}
+    return {'votes': []}
 
 def save_votes(data):
     """Save votes to JSON file"""
@@ -24,10 +24,19 @@ def load_config():
     """Load configuration from JSON file"""
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, 'r') as f:
-            return json.load(f)
+            config = json.load(f)
+            # Migrate old format to new format if needed
+            if 'candidate_name' in config and 'candidates' not in config:
+                # Old format - convert to new
+                if config.get('candidate_name'):
+                    config['candidates'] = [{'id': '1', 'name': config['candidate_name']}]
+                else:
+                    config['candidates'] = []
+                del config['candidate_name']
+            return config
     return {
-        'candidate_name': '',
         'position': '',
+        'candidates': [],
         'allowed_emails': [],
         'is_configured': False
     }
@@ -43,7 +52,37 @@ def get_total_voters():
     if config['is_configured']:
         # Count non-empty emails
         return len([email for email in config['allowed_emails'] if email.strip()])
-    return 3  # Default fallback
+    return 0
+
+def get_total_candidates():
+    """Get total number of candidates from config"""
+    config = load_config()
+    return len(config.get('candidates', []))
+
+def get_voter_progress(voter_email):
+    """Get which candidates a voter has voted on"""
+    votes_data = load_votes()
+    voted_candidate_ids = []
+    for vote in votes_data['votes']:
+        if vote['voter'].lower() == voter_email.lower():
+            voted_candidate_ids.append(vote['candidate_id'])
+    return voted_candidate_ids
+
+def is_voting_complete():
+    """Check if all voters have voted on all candidates"""
+    config = load_config()
+    votes_data = load_votes()
+
+    total_voters = get_total_voters()
+    total_candidates = get_total_candidates()
+
+    if total_voters == 0 or total_candidates == 0:
+        return False
+
+    expected_total_votes = total_voters * total_candidates
+    actual_total_votes = len(votes_data['votes'])
+
+    return actual_total_votes >= expected_total_votes
 
 @app.route('/')
 def index():
@@ -57,10 +96,12 @@ def vote_page():
 
 @app.route('/api/vote', methods=['POST'])
 def submit_vote():
-    """Submit a vote"""
+    """Submit a vote for a candidate"""
     data = request.json
     voter_email = data.get('voter_email', '').strip().lower()
+    candidate_id = data.get('candidate_id', '')
     choice = data.get('choice', '')
+    feedback = data.get('feedback', '').strip()
 
     # Load configuration
     config = load_config()
@@ -78,31 +119,105 @@ def submit_vote():
     if voter_email not in allowed_emails:
         return jsonify({'success': False, 'message': 'Your email is not authorized to vote'}), 403
 
+    # Validate candidate
+    if not candidate_id:
+        return jsonify({'success': False, 'message': 'Candidate ID is required'}), 400
+
+    candidate = next((c for c in config['candidates'] if c['id'] == candidate_id), None)
+    if not candidate:
+        return jsonify({'success': False, 'message': 'Invalid candidate'}), 400
+
+    # Validate choice
     if choice not in ['Inclined', 'Not Inclined']:
         return jsonify({'success': False, 'message': 'Invalid choice'}), 400
+
+    # Validate feedback
+    if not feedback:
+        return jsonify({'success': False, 'message': 'Feedback is required'}), 400
 
     # Load existing votes
     votes_data = load_votes()
 
-    # Check if voter already voted
-    if voter_email in votes_data['voters']:
-        return jsonify({'success': False, 'message': 'You have already voted'}), 400
+    # Check if voter already voted for this candidate - if so, update it
+    existing_vote_index = None
+    for i, vote in enumerate(votes_data['votes']):
+        if vote['voter'].lower() == voter_email and vote['candidate_id'] == candidate_id:
+            existing_vote_index = i
+            break
 
-    # Add vote
-    votes_data['votes'].append({
+    vote_record = {
         'voter': voter_email,
+        'candidate_id': candidate_id,
+        'candidate_name': candidate['name'],
         'choice': choice,
+        'feedback': feedback,
         'timestamp': datetime.now().isoformat()
-    })
-    votes_data['voters'].append(voter_email)
+    }
+
+    if existing_vote_index is not None:
+        # Update existing vote
+        votes_data['votes'][existing_vote_index] = vote_record
+        message = f'Vote updated for {candidate["name"]}!'
+    else:
+        # Add new vote
+        votes_data['votes'].append(vote_record)
+        message = f'Vote recorded for {candidate["name"]}!'
 
     # Save votes
     save_votes(votes_data)
 
-    total_voters = get_total_voters()
+    # Check progress
+    voter_progress = get_voter_progress(voter_email)
+    total_candidates = get_total_candidates()
+
     return jsonify({
         'success': True,
-        'message': f'Vote recorded! {len(votes_data["votes"])}/{total_voters} votes submitted.'
+        'message': message,
+        'votes_submitted': len(voter_progress),
+        'total_candidates': total_candidates
+    })
+
+@app.route('/api/voter/progress', methods=['POST'])
+def get_voter_progress_api():
+    """Get voter's progress (which candidates they've voted on)"""
+    data = request.json
+    voter_email = data.get('voter_email', '').strip().lower()
+
+    if not voter_email:
+        return jsonify({'success': False, 'message': 'Email is required'}), 400
+
+    config = load_config()
+    votes_data = load_votes()
+
+    # Get all candidates
+    candidates = config.get('candidates', [])
+
+    # Get voter's votes
+    voter_votes = {}
+    for vote in votes_data['votes']:
+        if vote['voter'].lower() == voter_email:
+            voter_votes[vote['candidate_id']] = {
+                'choice': vote['choice'],
+                'feedback': vote['feedback'],
+                'timestamp': vote['timestamp']
+            }
+
+    # Build response with candidate status
+    candidate_status = []
+    for candidate in candidates:
+        vote_info = voter_votes.get(candidate['id'])
+        candidate_status.append({
+            'id': candidate['id'],
+            'name': candidate['name'],
+            'voted': vote_info is not None,
+            'vote': vote_info if vote_info else None
+        })
+
+    return jsonify({
+        'success': True,
+        'candidates': candidate_status,
+        'votes_submitted': len(voter_votes),
+        'total_candidates': len(candidates)
     })
 
 @app.route('/results')
@@ -112,35 +227,51 @@ def results_page():
 
 @app.route('/api/results', methods=['GET'])
 def get_results():
-    """Get voting results (only if all votes are in)"""
+    """Get voting results (only if all voters have voted on all candidates)"""
     config = load_config()
     votes_data = load_votes()
-    total_votes = len(votes_data['votes'])
-    total_voters = get_total_voters()
 
-    if total_votes < total_voters:
+    total_voters = get_total_voters()
+    total_candidates = get_total_candidates()
+    total_votes = len(votes_data['votes'])
+    expected_votes = total_voters * total_candidates
+
+    # Check if voting is complete
+    if not is_voting_complete():
         return jsonify({
             'complete': False,
             'votes_received': total_votes,
-            'votes_needed': total_voters,
-            'message': f'Waiting for {total_voters - total_votes} more vote(s)',
-            'candidate_name': config.get('candidate_name', ''),
+            'votes_needed': expected_votes,
+            'message': f'Waiting for {expected_votes - total_votes} more vote(s)',
             'position': config.get('position', ''),
-            'is_configured': config.get('is_configured', False)
+            'is_configured': config.get('is_configured', False),
+            'total_voters': total_voters,
+            'total_candidates': total_candidates
         })
 
-    # Count votes
-    inclined = sum(1 for v in votes_data['votes'] if v['choice'] == 'Inclined')
-    not_inclined = sum(1 for v in votes_data['votes'] if v['choice'] == 'Not Inclined')
+    # Build results for each candidate
+    candidates_results = []
+    for candidate in config.get('candidates', []):
+        candidate_votes = [v for v in votes_data['votes'] if v['candidate_id'] == candidate['id']]
+
+        inclined = sum(1 for v in candidate_votes if v['choice'] == 'Inclined')
+        not_inclined = sum(1 for v in candidate_votes if v['choice'] == 'Not Inclined')
+
+        candidates_results.append({
+            'id': candidate['id'],
+            'name': candidate['name'],
+            'total_votes': len(candidate_votes),
+            'inclined': inclined,
+            'not_inclined': not_inclined,
+            'votes': candidate_votes
+        })
 
     return jsonify({
         'complete': True,
-        'total_votes': total_votes,
-        'inclined': inclined,
-        'not_inclined': not_inclined,
-        'votes': votes_data['votes'],
-        'candidate_name': config.get('candidate_name', ''),
         'position': config.get('position', ''),
+        'total_voters': total_voters,
+        'total_candidates': total_candidates,
+        'candidates': candidates_results,
         'is_configured': config.get('is_configured', False)
     })
 
@@ -152,10 +283,10 @@ def admin_page():
 @app.route('/api/reset', methods=['POST'])
 def reset_votes():
     """Reset all votes and configuration (admin only)"""
-    save_votes({'votes': [], 'voters': []})
+    save_votes({'votes': []})
     save_config({
-        'candidate_name': '',
         'position': '',
+        'candidates': [],
         'allowed_emails': [],
         'is_configured': False
     })
@@ -167,15 +298,17 @@ def get_status():
     config = load_config()
     votes_data = load_votes()
     total_voters = get_total_voters()
+    total_candidates = get_total_candidates()
 
     return jsonify({
         'total_votes': len(votes_data['votes']),
-        'votes_needed': total_voters,
-        'voters': votes_data['voters'],
+        'votes_needed': total_voters * total_candidates if config.get('is_configured') else 0,
         'is_configured': config.get('is_configured', False),
-        'candidate_name': config.get('candidate_name', ''),
+        'candidates': config.get('candidates', []),
         'position': config.get('position', ''),
-        'voting_locked': len(votes_data['votes']) > 0
+        'voting_locked': len(votes_data['votes']) > 0,
+        'total_voters': total_voters,
+        'total_candidates': total_candidates
     })
 
 @app.route('/api/config', methods=['GET'])
@@ -185,8 +318,8 @@ def get_config():
     votes_data = load_votes()
 
     return jsonify({
-        'candidate_name': config.get('candidate_name', ''),
         'position': config.get('position', ''),
+        'candidates': config.get('candidates', []),
         'allowed_emails': config.get('allowed_emails', []),
         'is_configured': config.get('is_configured', False),
         'voting_locked': len(votes_data['votes']) > 0
@@ -205,16 +338,35 @@ def save_configuration():
             'message': 'Cannot change configuration after voting has started. Reset votes first.'
         }), 400
 
-    candidate_name = data.get('candidate_name', '').strip()
     position = data.get('position', '').strip()
+    candidates = data.get('candidates', [])
     allowed_emails = data.get('allowed_emails', [])
 
     # Validate inputs
-    if not candidate_name:
-        return jsonify({'success': False, 'message': 'Candidate name is required'}), 400
-
     if not position:
         return jsonify({'success': False, 'message': 'Position is required'}), 400
+
+    # Validate candidates
+    if not candidates or len(candidates) == 0:
+        return jsonify({'success': False, 'message': 'At least one candidate is required'}), 400
+
+    valid_candidates = []
+    for i, candidate in enumerate(candidates):
+        if isinstance(candidate, dict):
+            name = candidate.get('name', '').strip()
+        else:
+            name = str(candidate).strip()
+
+        if not name:
+            continue
+
+        valid_candidates.append({
+            'id': str(i + 1),
+            'name': name
+        })
+
+    if len(valid_candidates) == 0:
+        return jsonify({'success': False, 'message': 'At least one candidate is required'}), 400
 
     # Filter out empty emails and validate
     valid_emails = []
@@ -234,8 +386,8 @@ def save_configuration():
 
     # Save configuration
     config_data = {
-        'candidate_name': candidate_name,
         'position': position,
+        'candidates': valid_candidates,
         'allowed_emails': valid_emails,
         'is_configured': True
     }
@@ -243,7 +395,7 @@ def save_configuration():
 
     return jsonify({
         'success': True,
-        'message': f'Configuration saved! {len(valid_emails)} voter(s) configured.'
+        'message': f'Configuration saved! {len(valid_candidates)} candidate(s) and {len(valid_emails)} voter(s) configured.'
     })
 
 if __name__ == '__main__':
