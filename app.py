@@ -1,13 +1,18 @@
 from flask import Flask, render_template, request, jsonify, redirect
-import json
 import os
 from datetime import datetime
 from anthropic import Anthropic
 
-app = Flask(__name__)
+# Import storage layer - automatically uses JSON or PostgreSQL based on DATABASE_URL
+from storage import (
+    load_votes, save_votes, save_vote,
+    load_config, save_config,
+    load_roles, save_roles, save_role,
+    get_role_by_id, delete_role as delete_role_storage,
+    init_db, USE_DATABASE
+)
 
-VOTES_FILE = 'votes.json'
-CONFIG_FILE = 'config.json'
+app = Flask(__name__)
 
 # Initialize Anthropic Claude client (API key from environment variable)
 claude_client = None
@@ -16,6 +21,15 @@ if os.environ.get('ANTHROPIC_API_KEY'):
 
 # Detect if running in production (Render sets PORT environment variable)
 IS_PRODUCTION = 'RENDER' in os.environ or os.environ.get('PORT') == '10000'
+
+# Initialize database if using PostgreSQL
+if USE_DATABASE:
+    try:
+        init_db()
+        print("✓ Database initialized successfully")
+    except Exception as e:
+        print(f"✗ Database initialization failed: {e}")
+        raise
 
 # Force HTTPS in production
 @app.before_request
@@ -38,43 +52,42 @@ def add_security_headers(response):
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
-def load_votes():
-    """Load votes from JSON file"""
-    if os.path.exists(VOTES_FILE):
-        with open(VOTES_FILE, 'r') as f:
-            return json.load(f)
-    return {'votes': []}
+def migrate_config_to_roles():
+    """Migrate existing config.json to roles format (one-time migration)"""
+    # Check if roles already exist
+    roles_data = load_roles()
+    if len(roles_data.get('roles', [])) > 0:
+        return  # Already migrated
 
-def save_votes(data):
-    """Save votes to JSON file"""
-    with open(VOTES_FILE, 'w') as f:
-        json.dump(data, f, indent=2)
+    # Load existing config
+    config = load_config()
 
-def load_config():
-    """Load configuration from JSON file"""
-    if os.path.exists(CONFIG_FILE):
-        with open(CONFIG_FILE, 'r') as f:
-            config = json.load(f)
-            # Migrate old format to new format if needed
-            if 'candidate_name' in config and 'candidates' not in config:
-                # Old format - convert to new
-                if config.get('candidate_name'):
-                    config['candidates'] = [{'id': '1', 'name': config['candidate_name']}]
-                else:
-                    config['candidates'] = []
-                del config['candidate_name']
-            return config
-    return {
-        'position': '',
-        'candidates': [],
-        'allowed_emails': [],
-        'is_configured': False
+    # If config is not configured, create empty roles structure
+    if not config.get('is_configured'):
+        save_roles({'roles': []})
+        return
+
+    # Create first role from existing config
+    import uuid
+    role_id = str(uuid.uuid4())
+
+    role = {
+        'id': role_id,
+        'position': config.get('position', ''),
+        'candidates': config.get('candidates', []),
+        'allowed_emails': config.get('allowed_emails', []),
+        'status': 'active',
+        'created_at': datetime.now().isoformat()
     }
 
-def save_config(data):
-    """Save configuration to JSON file"""
-    with open(CONFIG_FILE, 'w') as f:
-        json.dump(data, f, indent=2)
+    save_roles({'roles': [role]})
+
+    # Update existing votes to include role_id
+    votes_data = load_votes()
+    for vote in votes_data['votes']:
+        if 'role_id' not in vote:
+            vote['role_id'] = role_id
+    save_votes(votes_data)
 
 def get_total_voters():
     """Get total number of voters from config"""
@@ -132,7 +145,86 @@ def submit_vote():
     candidate_id = data.get('candidate_id', '')
     choice = data.get('choice', '')
     feedback = data.get('feedback', '').strip()
+    role_id = data.get('role_id', '')  # Optional for multi-role support
 
+    # If role_id is provided, use new multi-role system
+    if role_id:
+        role = get_role_by_id(role_id)
+        if not role:
+            return jsonify({'success': False, 'message': 'Role not found'}), 404
+
+        # Validate email
+        if not voter_email:
+            return jsonify({'success': False, 'message': 'Please enter your email'}), 400
+
+        # Check if email is in allowed list for this role
+        allowed_emails = [email.strip().lower() for email in role.get('allowed_emails', []) if email.strip()]
+        if voter_email not in allowed_emails:
+            return jsonify({'success': False, 'message': 'Your email is not authorized to vote for this role'}), 403
+
+        # Validate candidate
+        if not candidate_id:
+            return jsonify({'success': False, 'message': 'Candidate ID is required'}), 400
+
+        candidate = next((c for c in role.get('candidates', []) if c['id'] == candidate_id), None)
+        if not candidate:
+            return jsonify({'success': False, 'message': 'Invalid candidate'}), 400
+
+        # Validate choice
+        if choice not in ['Inclined', 'Not Inclined']:
+            return jsonify({'success': False, 'message': 'Invalid choice'}), 400
+
+        # Validate feedback
+        if not feedback:
+            return jsonify({'success': False, 'message': 'Feedback is required'}), 400
+
+        # Load existing votes
+        votes_data = load_votes()
+
+        # Check if voter already voted for this candidate in this role - if so, update it
+        existing_vote_index = None
+        for i, vote in enumerate(votes_data['votes']):
+            if (vote['voter'].lower() == voter_email and
+                vote['candidate_id'] == candidate_id and
+                vote.get('role_id') == role_id):
+                existing_vote_index = i
+                break
+
+        vote_record = {
+            'voter': voter_email,
+            'candidate_id': candidate_id,
+            'candidate_name': candidate['name'],
+            'role_id': role_id,
+            'role_position': role['position'],
+            'choice': choice,
+            'feedback': feedback,
+            'timestamp': datetime.now().isoformat()
+        }
+
+        if existing_vote_index is not None:
+            # Update existing vote
+            votes_data['votes'][existing_vote_index] = vote_record
+            message = f'Vote updated for {candidate["name"]} ({role["position"]})!'
+        else:
+            # Add new vote
+            votes_data['votes'].append(vote_record)
+            message = f'Vote recorded for {candidate["name"]} ({role["position"]})!'
+
+        # Save votes
+        save_votes(votes_data)
+
+        # Count progress for this role
+        role_votes = [v for v in votes_data['votes'] if v.get('role_id') == role_id and v['voter'].lower() == voter_email]
+        total_candidates = len(role.get('candidates', []))
+
+        return jsonify({
+            'success': True,
+            'message': message,
+            'votes_submitted': len(role_votes),
+            'total_candidates': total_candidates
+        })
+
+    # Legacy path: Use old config.json system if no role_id provided
     # Load configuration
     config = load_config()
 
@@ -250,6 +342,56 @@ def get_voter_progress_api():
         'total_candidates': len(candidates)
     })
 
+@app.route('/api/voter/role-progress', methods=['POST'])
+def get_voter_role_progress_api():
+    """Get voter's progress for a specific role (which candidates they've voted on)"""
+    data = request.json
+    voter_email = data.get('voter_email', '').strip().lower()
+    role_id = data.get('role_id', '')
+
+    if not voter_email:
+        return jsonify({'success': False, 'message': 'Email is required'}), 400
+
+    if not role_id:
+        return jsonify({'success': False, 'message': 'Role ID is required'}), 400
+
+    role = get_role_by_id(role_id)
+    if not role:
+        return jsonify({'success': False, 'message': 'Role not found'}), 404
+
+    votes_data = load_votes()
+
+    # Get all candidates for this role
+    candidates = role.get('candidates', [])
+
+    # Get voter's votes for this role
+    voter_votes = {}
+    for vote in votes_data['votes']:
+        if vote['voter'].lower() == voter_email and vote.get('role_id') == role_id:
+            voter_votes[vote['candidate_id']] = {
+                'choice': vote['choice'],
+                'feedback': vote['feedback'],
+                'timestamp': vote['timestamp']
+            }
+
+    # Build response with candidate status
+    candidate_status = []
+    for candidate in candidates:
+        vote_info = voter_votes.get(candidate['id'])
+        candidate_status.append({
+            'id': candidate['id'],
+            'name': candidate['name'],
+            'voted': vote_info is not None,
+            'vote': vote_info if vote_info else None
+        })
+
+    return jsonify({
+        'success': True,
+        'candidates': candidate_status,
+        'votes_submitted': len(voter_votes),
+        'total_candidates': len(candidates)
+    })
+
 @app.route('/results')
 def results_page():
     """Display results page"""
@@ -303,6 +445,61 @@ def get_results():
         'total_candidates': total_candidates,
         'candidates': candidates_results,
         'is_configured': config.get('is_configured', False)
+    })
+
+@app.route('/api/results/<role_id>', methods=['GET'])
+def get_role_results(role_id):
+    """Get voting results for a specific role (only if all voters have voted on all candidates)"""
+    role = get_role_by_id(role_id)
+
+    if not role:
+        return jsonify({'success': False, 'message': 'Role not found'}), 404
+
+    votes_data = load_votes()
+    role_votes = [v for v in votes_data['votes'] if v.get('role_id') == role_id]
+
+    total_voters = len(role.get('allowed_emails', []))
+    total_candidates = len(role.get('candidates', []))
+    expected_votes = total_voters * total_candidates
+
+    # Check if voting is complete for this role
+    if len(role_votes) < expected_votes:
+        return jsonify({
+            'complete': False,
+            'votes_received': len(role_votes),
+            'votes_needed': expected_votes,
+            'message': f'Waiting for {expected_votes - len(role_votes)} more vote(s)',
+            'position': role.get('position', ''),
+            'total_voters': total_voters,
+            'total_candidates': total_candidates,
+            'role_id': role_id
+        })
+
+    # Build results for each candidate in this role
+    candidates_results = []
+    for candidate in role.get('candidates', []):
+        candidate_votes = [v for v in role_votes if v['candidate_id'] == candidate['id']]
+
+        inclined = sum(1 for v in candidate_votes if v['choice'] == 'Inclined')
+        not_inclined = sum(1 for v in candidate_votes if v['choice'] == 'Not Inclined')
+
+        candidates_results.append({
+            'id': candidate['id'],
+            'name': candidate['name'],
+            'total_votes': len(candidate_votes),
+            'inclined': inclined,
+            'not_inclined': not_inclined,
+            'votes': candidate_votes
+        })
+
+    return jsonify({
+        'complete': True,
+        'position': role.get('position', ''),
+        'total_voters': total_voters,
+        'total_candidates': total_candidates,
+        'candidates': candidates_results,
+        'role_id': role_id,
+        'status': role.get('status', 'active')
     })
 
 @app.route('/admin')
@@ -386,6 +583,88 @@ Raw interview notes:
         response = claude_client.messages.create(
             model="claude-3-5-haiku-20241022",  # Fast and economical
             max_tokens=500,
+            temperature=0.3,
+            messages=[
+                {"role": "user", "content": user_prompt}
+            ]
+        )
+
+        summary = response.content[0].text.strip()
+
+        return jsonify({
+            'success': True,
+            'summary': summary
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Error generating summary: {str(e)}'
+        }), 500
+
+@app.route('/api/aggregate-summary/<role_id>/<candidate_id>', methods=['POST'])
+def generate_aggregate_summary(role_id, candidate_id):
+    """Generate an aggregate summary of all voter feedback for a candidate"""
+    if not claude_client:
+        return jsonify({
+            'success': False,
+            'message': 'AI summarization not configured.'
+        }), 400
+
+    role = get_role_by_id(role_id)
+    if not role:
+        return jsonify({'success': False, 'message': 'Role not found'}), 404
+
+    candidate = next((c for c in role.get('candidates', []) if c['id'] == candidate_id), None)
+    if not candidate:
+        return jsonify({'success': False, 'message': 'Candidate not found'}), 404
+
+    votes_data = load_votes()
+    candidate_votes = [v for v in votes_data['votes']
+                      if v.get('role_id') == role_id and v['candidate_id'] == candidate_id]
+
+    if not candidate_votes:
+        return jsonify({'success': False, 'message': 'No votes found for this candidate'}), 404
+
+    try:
+        # Build combined feedback text
+        feedback_text = f"Position: {role['position']}\nCandidate: {candidate['name']}\n\n"
+
+        inclined_count = sum(1 for v in candidate_votes if v['choice'] == 'Inclined')
+        not_inclined_count = sum(1 for v in candidate_votes if v['choice'] == 'Not Inclined')
+
+        feedback_text += f"Vote Summary: {inclined_count} Inclined, {not_inclined_count} Not Inclined\n\n"
+        feedback_text += "Individual Voter Feedback:\n\n"
+
+        for i, vote in enumerate(candidate_votes, 1):
+            feedback_text += f"Voter {i} ({vote['choice']}):\n{vote.get('feedback', 'No feedback provided')}\n\n"
+
+        user_prompt = f"""You are reviewing interview feedback for a candidate. Below is the combined feedback from all interviewers.
+
+Please create a concise executive summary (max 300 words) that synthesizes all feedback and provides a clear recommendation.
+
+Format the output as:
+**Executive Summary:**
+[2-3 sentence overview of the candidate's performance and vote breakdown]
+
+**Key Strengths:**
+- [Synthesized strengths mentioned by multiple voters]
+- [Additional strengths]
+
+**Areas of Concern:**
+- [Synthesized concerns/watchouts from multiple voters]
+- [Additional concerns]
+
+**Recommendation:**
+[Based on the vote distribution and feedback, provide a clear hiring recommendation]
+
+Be balanced, objective, and actionable. Highlight patterns across multiple voters.
+
+{feedback_text}"""
+
+        response = claude_client.messages.create(
+            model="claude-3-5-haiku-20241022",
+            max_tokens=700,
             temperature=0.3,
             messages=[
                 {"role": "user", "content": user_prompt}
@@ -544,7 +823,294 @@ def save_configuration():
         'message': f'Configuration saved! {len(valid_candidates)} candidate(s) and {len(valid_emails)} voter(s) configured.'
     })
 
+@app.route('/api/roles', methods=['POST'])
+def create_role():
+    """Create a new role/position"""
+    data = request.json
+
+    position = data.get('position', '').strip()
+    candidates = data.get('candidates', [])
+    allowed_emails = data.get('allowed_emails', [])
+    status = data.get('status', 'active')
+
+    # Validate position
+    if not position:
+        return jsonify({'success': False, 'message': 'Position is required'}), 400
+
+    # Validate and build candidates list
+    valid_candidates = []
+    candidate_id = 1
+    for candidate in candidates:
+        if isinstance(candidate, dict):
+            name = candidate.get('name', '').strip()
+        else:
+            name = str(candidate).strip()
+
+        if name:
+            valid_candidates.append({
+                'id': str(candidate_id),
+                'name': name
+            })
+            candidate_id += 1
+
+    if len(valid_candidates) == 0:
+        return jsonify({'success': False, 'message': 'At least one candidate is required'}), 400
+
+    # Validate emails
+    valid_emails = []
+    for email in allowed_emails:
+        email = email.strip()
+        if email:
+            if '@' not in email or '.' not in email:
+                return jsonify({'success': False, 'message': f'Invalid email format: {email}'}), 400
+            valid_emails.append(email)
+
+    if len(valid_emails) == 0:
+        return jsonify({'success': False, 'message': 'At least one voter email is required'}), 400
+
+    if len(valid_emails) > 5:
+        return jsonify({'success': False, 'message': 'Maximum 5 voters allowed'}), 400
+
+    # Validate status
+    if status not in ['active', 'fulfilled', 'expired']:
+        status = 'active'
+
+    # Create new role
+    import uuid
+    role_id = str(uuid.uuid4())
+
+    role = {
+        'id': role_id,
+        'position': position,
+        'candidates': valid_candidates,
+        'allowed_emails': valid_emails,
+        'status': status,
+        'created_at': datetime.now().isoformat()
+    }
+
+    # Load existing roles and add new one
+    roles_data = load_roles()
+    roles_data['roles'].append(role)
+    save_roles(roles_data)
+
+    return jsonify({
+        'success': True,
+        'message': f'Role "{position}" created successfully',
+        'role': role
+    })
+
+@app.route('/api/roles', methods=['GET'])
+def list_roles():
+    """List all roles with optional status filter"""
+    status_filter = request.args.get('status')  # active, fulfilled, expired
+
+    roles_data = load_roles()
+    roles = roles_data['roles']
+
+    # Filter by status if provided
+    if status_filter:
+        roles = [r for r in roles if r.get('status') == status_filter]
+
+    # Add vote counts to each role
+    votes_data = load_votes()
+    for role in roles:
+        role_votes = [v for v in votes_data['votes'] if v.get('role_id') == role['id']]
+        total_voters = len(role.get('allowed_emails', []))
+        total_candidates = len(role.get('candidates', []))
+        expected_votes = total_voters * total_candidates
+
+        role['vote_stats'] = {
+            'total_votes': len(role_votes),
+            'expected_votes': expected_votes,
+            'is_complete': len(role_votes) >= expected_votes if expected_votes > 0 else False
+        }
+
+    return jsonify({
+        'success': True,
+        'roles': roles,
+        'total': len(roles)
+    })
+
+@app.route('/api/roles/<role_id>', methods=['GET'])
+def get_role(role_id):
+    """Get a specific role by ID"""
+    role = get_role_by_id(role_id)
+
+    if not role:
+        return jsonify({'success': False, 'message': 'Role not found'}), 404
+
+    # Add vote stats
+    votes_data = load_votes()
+    role_votes = [v for v in votes_data['votes'] if v.get('role_id') == role_id]
+    total_voters = len(role.get('allowed_emails', []))
+    total_candidates = len(role.get('candidates', []))
+    expected_votes = total_voters * total_candidates
+
+    role['vote_stats'] = {
+        'total_votes': len(role_votes),
+        'expected_votes': expected_votes,
+        'is_complete': len(role_votes) >= expected_votes if expected_votes > 0 else False
+    }
+
+    return jsonify({
+        'success': True,
+        'role': role
+    })
+
+@app.route('/api/roles/<role_id>', methods=['PUT'])
+def update_role(role_id):
+    """Update a role (status, add candidates, add voters)"""
+    data = request.json
+
+    roles_data = load_roles()
+    role_index = None
+
+    for i, role in enumerate(roles_data['roles']):
+        if role['id'] == role_id:
+            role_index = i
+            break
+
+    if role_index is None:
+        return jsonify({'success': False, 'message': 'Role not found'}), 404
+
+    role = roles_data['roles'][role_index]
+    votes_data = load_votes()
+    role_votes = [v for v in votes_data['votes'] if v.get('role_id') == role_id]
+    has_votes = len(role_votes) > 0
+
+    # Update status if provided
+    if 'status' in data:
+        new_status = data['status']
+        if new_status in ['active', 'fulfilled', 'expired']:
+            role['status'] = new_status
+
+    # Update position if provided
+    if 'position' in data:
+        position = data['position'].strip()
+        if position:
+            role['position'] = position
+
+    # Update candidates if provided (can only add, not remove if votes exist)
+    if 'candidates' in data:
+        new_candidates = data['candidates']
+
+        if has_votes:
+            # Can only add, not remove
+            existing_candidate_ids = set(c['id'] for c in role['candidates'])
+            voted_candidate_ids = set(v['candidate_id'] for v in role_votes)
+
+            # Build new candidates list preserving IDs
+            valid_candidates = []
+            existing_candidates = {c['id']: c for c in role['candidates']}
+            max_id = max([int(c['id']) for c in role['candidates']], default=0)
+
+            for candidate in new_candidates:
+                if isinstance(candidate, dict):
+                    candidate_id = candidate.get('id')
+                    name = candidate.get('name', '').strip()
+                else:
+                    candidate_id = None
+                    name = str(candidate).strip()
+
+                if not name:
+                    continue
+
+                if candidate_id and candidate_id in existing_candidates:
+                    valid_candidates.append({'id': candidate_id, 'name': name})
+                else:
+                    max_id += 1
+                    valid_candidates.append({'id': str(max_id), 'name': name})
+
+            # Check we're not removing candidates with votes
+            new_candidate_ids = set(c['id'] for c in valid_candidates)
+            removed_candidates = voted_candidate_ids - new_candidate_ids
+
+            if removed_candidates:
+                return jsonify({
+                    'success': False,
+                    'message': 'Cannot remove candidates with existing votes'
+                }), 400
+
+            role['candidates'] = valid_candidates
+        else:
+            # No votes, can freely update
+            valid_candidates = []
+            candidate_id = 1
+            for candidate in new_candidates:
+                if isinstance(candidate, dict):
+                    name = candidate.get('name', '').strip()
+                else:
+                    name = str(candidate).strip()
+
+                if name:
+                    valid_candidates.append({'id': str(candidate_id), 'name': name})
+                    candidate_id += 1
+
+            role['candidates'] = valid_candidates
+
+    # Update allowed emails if provided (can add new voters)
+    if 'allowed_emails' in data:
+        new_emails = data['allowed_emails']
+        valid_emails = []
+
+        for email in new_emails:
+            email = email.strip()
+            if email:
+                if '@' not in email or '.' not in email:
+                    return jsonify({'success': False, 'message': f'Invalid email format: {email}'}), 400
+                valid_emails.append(email)
+
+        if len(valid_emails) > 0:
+            role['allowed_emails'] = valid_emails
+
+    # Save updated role
+    role['updated_at'] = datetime.now().isoformat()
+    roles_data['roles'][role_index] = role
+    save_roles(roles_data)
+
+    return jsonify({
+        'success': True,
+        'message': 'Role updated successfully',
+        'role': role
+    })
+
+@app.route('/api/roles/<role_id>', methods=['DELETE'])
+def delete_role(role_id):
+    """Delete a role (only if no votes exist)"""
+    roles_data = load_roles()
+    role_index = None
+
+    for i, role in enumerate(roles_data['roles']):
+        if role['id'] == role_id:
+            role_index = i
+            break
+
+    if role_index is None:
+        return jsonify({'success': False, 'message': 'Role not found'}), 404
+
+    # Check if role has votes
+    votes_data = load_votes()
+    role_votes = [v for v in votes_data['votes'] if v.get('role_id') == role_id]
+
+    if len(role_votes) > 0:
+        return jsonify({
+            'success': False,
+            'message': 'Cannot delete role with existing votes. Mark as expired instead.'
+        }), 400
+
+    # Remove role
+    deleted_role = roles_data['roles'].pop(role_index)
+    save_roles(roles_data)
+
+    return jsonify({
+        'success': True,
+        'message': f'Role "{deleted_role["position"]}" deleted successfully'
+    })
+
 if __name__ == '__main__':
+    # Run migration on startup
+    migrate_config_to_roles()
+
     # Get local IP for sharing with collaborators
     import socket
 

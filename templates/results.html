@@ -245,6 +245,57 @@
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
         }
 
+        .btn-ai-summary {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
+        }
+
+        .btn-ai-summary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(245, 87, 108, 0.3);
+        }
+
+        .btn-ai-summary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .ai-summary-box {
+            background: #f0f8ff;
+            border: 2px solid #4682b4;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .ai-summary-box.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        .ai-summary-box h4 {
+            color: #2c5282;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .ai-summary-content {
+            color: #2d3748;
+            line-height: 1.7;
+            font-size: 0.95em;
+        }
+
         .loading {
             text-align: center;
             color: #666;
@@ -277,21 +328,77 @@
     <div class="container">
         <h1>Voting Results</h1>
 
-        <div id="content" class="loading">
-            <div class="spinner"></div>
-            <p>Loading results...</p>
+        <div class="role-selector-section" style="margin-bottom: 30px;">
+            <label for="roleSelector" style="display: block; margin-bottom: 10px; color: #333; font-weight: 600;">Select Position:</label>
+            <select id="roleSelector" onchange="onRoleChange()" style="width: 100%; padding: 12px; border: 2px solid #667eea; border-radius: 8px; font-size: 16px; background: white; cursor: pointer;">
+                <option value="">Loading positions...</option>
+            </select>
         </div>
 
-        <button class="refresh-btn" onclick="loadResults()">Refresh Results</button>
+        <div id="content" class="loading">
+            <div class="spinner"></div>
+            <p>Select a position to view results...</p>
+        </div>
+
+        <button class="refresh-btn" onclick="loadResults()" id="refreshBtn" style="display: none;">Refresh Results</button>
     </div>
 
     <script>
+        let selectedRoleId = null;
+        let availableRoles = [];
+
+        function loadRoles() {
+            fetch('/api/roles')
+                .then(response => response.json())
+                .then(data => {
+                    availableRoles = data.roles || [];
+                    const roleSelector = document.getElementById('roleSelector');
+
+                    if (availableRoles.length === 0) {
+                        roleSelector.innerHTML = '<option value="">No positions available</option>';
+                        document.getElementById('content').innerHTML = '<p style="text-align: center; color: #666;">No positions have been created yet.</p>';
+                        return;
+                    }
+
+                    roleSelector.innerHTML = '<option value="">-- Select a position --</option>';
+                    availableRoles.forEach(role => {
+                        const option = document.createElement('option');
+                        option.value = role.id;
+                        option.textContent = role.position;
+                        roleSelector.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading roles:', error);
+                    document.getElementById('roleSelector').innerHTML = '<option value="">Error loading positions</option>';
+                });
+        }
+
+        function onRoleChange() {
+            const roleSelector = document.getElementById('roleSelector');
+            selectedRoleId = roleSelector.value;
+
+            if (selectedRoleId) {
+                document.getElementById('refreshBtn').style.display = 'block';
+                loadResults();
+                startAutoRefresh();
+            } else {
+                document.getElementById('refreshBtn').style.display = 'none';
+                document.getElementById('content').innerHTML = '<div class="loading"><p>Select a position to view results...</p></div>';
+                stopAutoRefresh();
+            }
+        }
+
         function loadResults() {
+            if (!selectedRoleId) {
+                return;
+            }
+
             const contentDiv = document.getElementById('content');
             contentDiv.innerHTML = '<div class="spinner"></div><p>Loading results...</p>';
             contentDiv.className = 'loading';
 
-            fetch('/api/results')
+            fetch(`/api/results/${selectedRoleId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.complete) {
@@ -391,7 +498,7 @@
                     }
 
                     return `
-                        <div class="candidate-section">
+                        <div class="candidate-section" id="candidate-${candidate.id}">
                             <div class="candidate-name-header">
                                 <h2>${candidate.name}</h2>
                             </div>
@@ -410,6 +517,13 @@
                                 <h3>Detailed Feedback</h3>
                                 ${voteDetailsHTML}
                             </div>
+                            <button class="btn-ai-summary" onclick="generateAISummary('${candidate.id}', '${candidate.name}')" id="ai-btn-${candidate.id}">
+                                ✨ Generate AI Executive Summary
+                            </button>
+                            <div class="ai-summary-box" id="ai-summary-${candidate.id}">
+                                <h4>AI-Generated Executive Summary</h4>
+                                <div class="ai-summary-content" id="ai-content-${candidate.id}"></div>
+                            </div>
                         </div>
                     `;
                 }).join('');
@@ -425,8 +539,13 @@
         let autoRefreshInterval;
 
         function startAutoRefresh() {
+            stopAutoRefresh(); // Clear any existing interval
             autoRefreshInterval = setInterval(() => {
-                fetch('/api/results')
+                if (!selectedRoleId) {
+                    stopAutoRefresh();
+                    return;
+                }
+                fetch(`/api/results/${selectedRoleId}`)
                     .then(response => response.json())
                     .then(data => {
                         if (data.complete) {
@@ -442,12 +561,59 @@
         function stopAutoRefresh() {
             if (autoRefreshInterval) {
                 clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
             }
         }
 
-        // Load results on page load
-        loadResults();
-        startAutoRefresh();
+        function generateAISummary(candidateId, candidateName) {
+            if (!selectedRoleId) {
+                alert('No role selected');
+                return;
+            }
+
+            const btn = document.getElementById(`ai-btn-${candidateId}`);
+            const summaryBox = document.getElementById(`ai-summary-${candidateId}`);
+            const contentDiv = document.getElementById(`ai-content-${candidateId}`);
+
+            // Show loading state
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating summary...';
+            summaryBox.classList.remove('show');
+
+            fetch(`/api/aggregate-summary/${selectedRoleId}/${candidateId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Format the summary with markdown-style formatting
+                    const formattedSummary = data.summary
+                        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+                        .replace(/\n- /g, '\n• ')
+                        .replace(/\n/g, '<br>');
+
+                    contentDiv.innerHTML = formattedSummary;
+                    summaryBox.classList.add('show');
+                    btn.textContent = '✨ Regenerate AI Summary';
+                } else {
+                    alert(data.message || 'Error generating AI summary');
+                    btn.textContent = '✨ Generate AI Executive Summary';
+                }
+                btn.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error generating AI summary. Please try again.');
+                btn.disabled = false;
+                btn.textContent = '✨ Generate AI Executive Summary';
+            });
+        }
+
+        // Load roles on page load
+        loadRoles();
     </script>
 </body>
 </html>

@@ -381,14 +381,224 @@
             margin: 3px;
             font-size: 0.85em;
         }
+
+        /* Tab Styles */
+        .tab-btn {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #666;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .tab-btn:hover {
+            color: #667eea;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        /* Role Card Styles */
+        .role-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .role-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .role-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .role-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .role-status-badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .role-status-badge.active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .role-status-badge.fulfilled {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .role-status-badge.expired {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .role-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .role-info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .role-info-label {
+            color: #666;
+            font-size: 0.85em;
+            margin-bottom: 5px;
+        }
+
+        .role-info-value {
+            color: #333;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .role-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn-role-action {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-role-action.edit {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-role-action.edit:hover {
+            background: #5568d3;
+        }
+
+        .btn-role-action.delete {
+            background: #f5576c;
+            color: white;
+        }
+
+        .btn-role-action.delete:hover {
+            background: #d9405b;
+        }
+
+        .btn-role-action.view-results {
+            background: #38ef7d;
+            color: white;
+        }
+
+        .btn-role-action.view-results:hover {
+            background: #2dd46a;
+        }
+
+        .btn-add-role {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-add-role:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 15px;
+        }
+
+        .empty-state-text {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Admin Panel</h1>
-        <p class="subtitle">Configure voting and manage session</p>
+        <p class="subtitle">Manage roles, candidates, and voting sessions</p>
 
-        <h2>Voting Configuration</h2>
+        <!-- Tab Navigation -->
+        <div style="display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #e0e0e0; padding-bottom: 10px;">
+            <button class="tab-btn active" onclick="switchTab('roles')" id="rolesTab">
+                Role Management
+            </button>
+            <button class="tab-btn" onclick="switchTab('legacy')" id="legacyTab">
+                Legacy Single Position
+            </button>
+        </div>
+
+        <!-- Role Management Section -->
+        <div id="rolesSection">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0;">All Roles</h2>
+                <button class="btn-add-role" onclick="showCreateRoleModal()">+ Create New Role</button>
+            </div>
+
+            <!-- Status Filter -->
+            <div style="margin-bottom: 20px;">
+                <label style="margin-right: 10px; color: #666; font-weight: 500;">Filter by Status:</label>
+                <select id="statusFilter" onchange="loadRoles()" style="padding: 8px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 14px;">
+                    <option value="">All Statuses</option>
+                    <option value="active">Active</option>
+                    <option value="fulfilled">Fulfilled</option>
+                    <option value="expired">Expired</option>
+                </select>
+            </div>
+
+            <!-- Roles List -->
+            <div id="rolesList">
+                <!-- Roles will be loaded here dynamically -->
+            </div>
+        </div>
+
+        <!-- Legacy Single Position Section -->
+        <div id="legacySection" style="display: none;">
+            <h2>Voting Configuration</h2>
         <div class="config-card">
             <div id="lockNotice" class="lock-notice">
                 <strong>Voting in Progress</strong>
@@ -471,6 +681,55 @@
         </div>
 
         <div id="message" class="message"></div>
+        </div> <!-- End legacySection -->
+    </div>
+
+    <!-- Role Creation/Edit Modal -->
+    <div id="roleModal" class="confirm-dialog">
+        <div class="confirm-content" style="max-width: 600px;">
+            <h3 id="roleModalTitle">Create New Role</h3>
+            <input type="hidden" id="editingRoleId">
+
+            <div class="form-group" style="text-align: left;">
+                <label for="rolePosition">Position</label>
+                <input type="text" id="rolePosition" placeholder="e.g., Senior Engineer, Product Manager">
+            </div>
+
+            <div class="form-group" style="text-align: left;">
+                <label>Candidates</label>
+                <div id="roleCandidatesList" class="candidates-list"></div>
+                <button type="button" class="btn-add-candidate" onclick="addRoleCandidateField()">
+                    + Add Candidate
+                </button>
+            </div>
+
+            <div class="form-group" style="text-align: left;">
+                <label>Voter Emails (1-5 voters)</label>
+                <div style="display: grid; gap: 10px;">
+                    <input type="email" id="roleEmail1" placeholder="voter1@example.com">
+                    <input type="email" id="roleEmail2" placeholder="voter2@example.com">
+                    <input type="email" id="roleEmail3" placeholder="voter3@example.com">
+                    <input type="email" id="roleEmail4" placeholder="voter4@example.com">
+                    <input type="email" id="roleEmail5" placeholder="voter5@example.com">
+                </div>
+            </div>
+
+            <div class="form-group" style="text-align: left;">
+                <label for="roleStatus">Status</label>
+                <select id="roleStatus" style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 15px;">
+                    <option value="active">Active</option>
+                    <option value="fulfilled">Fulfilled</option>
+                    <option value="expired">Expired</option>
+                </select>
+            </div>
+
+            <div class="confirm-buttons">
+                <button class="btn-confirm yes" onclick="saveRole()" id="saveRoleBtn">Save Role</button>
+                <button class="btn-confirm no" onclick="hideRoleModal()">Cancel</button>
+            </div>
+
+            <div id="roleModalMessage" class="message" style="margin-top: 15px;"></div>
+        </div>
     </div>
 
     <div id="confirmDialog" class="confirm-dialog">
@@ -701,6 +960,280 @@
         setInterval(() => {
             loadStatus();
         }, 5000);
+
+        // ========== ROLE MANAGEMENT FUNCTIONS ==========
+
+        let roleCandidateCounter = 0;
+
+        function switchTab(tab) {
+            if (tab === 'roles') {
+                document.getElementById('rolesSection').style.display = 'block';
+                document.getElementById('legacySection').style.display = 'none';
+                document.getElementById('rolesTab').classList.add('active');
+                document.getElementById('legacyTab').classList.remove('active');
+                loadRoles();
+            } else {
+                document.getElementById('rolesSection').style.display = 'none';
+                document.getElementById('legacySection').style.display = 'block';
+                document.getElementById('rolesTab').classList.remove('active');
+                document.getElementById('legacyTab').classList.add('active');
+            }
+        }
+
+        function loadRoles() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            let url = '/api/roles';
+            if (statusFilter) {
+                url += `?status=${statusFilter}`;
+            }
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    const rolesList = document.getElementById('rolesList');
+
+                    if (data.roles && data.roles.length > 0) {
+                        rolesList.innerHTML = data.roles.map(role => {
+                            const voteProgress = role.vote_stats.total_votes + '/' + role.vote_stats.expected_votes;
+                            const isComplete = role.vote_stats.is_complete;
+
+                            return `
+                                <div class="role-card">
+                                    <div class="role-header">
+                                        <div>
+                                            <div class="role-title">${role.position}</div>
+                                            <div style="color: #999; font-size: 0.9em;">Created: ${new Date(role.created_at).toLocaleDateString()}</div>
+                                        </div>
+                                        <span class="role-status-badge ${role.status}">${role.status}</span>
+                                    </div>
+                                    <div class="role-info">
+                                        <div class="role-info-item">
+                                            <span class="role-info-label">Candidates</span>
+                                            <span class="role-info-value">${role.candidates.length}</span>
+                                        </div>
+                                        <div class="role-info-item">
+                                            <span class="role-info-label">Voters</span>
+                                            <span class="role-info-value">${role.allowed_emails.length}</span>
+                                        </div>
+                                        <div class="role-info-item">
+                                            <span class="role-info-label">Vote Progress</span>
+                                            <span class="role-info-value">${voteProgress} ${isComplete ? '✓' : ''}</span>
+                                        </div>
+                                    </div>
+                                    <div class="role-actions">
+                                        <button class="btn-role-action edit" onclick='editRole(${JSON.stringify(role)})'>Edit</button>
+                                        <button class="btn-role-action delete" onclick="deleteRole('${role.id}', '${role.position}', ${role.vote_stats.total_votes > 0})">Delete</button>
+                                        ${isComplete ? `<button class="btn-role-action view-results" onclick="window.location.href='/results?role_id=${role.id}'">View Results</button>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+                    } else {
+                        rolesList.innerHTML = `
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📋</div>
+                                <div class="empty-state-text">No roles found</div>
+                                <div style="color: #bbb;">Click "Create New Role" to get started</div>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading roles:', error);
+                    showMessage('Error loading roles', 'error');
+                });
+        }
+
+        function showCreateRoleModal() {
+            document.getElementById('roleModalTitle').textContent = 'Create New Role';
+            document.getElementById('editingRoleId').value = '';
+            document.getElementById('rolePosition').value = '';
+            document.getElementById('roleStatus').value = 'active';
+
+            // Clear candidate fields
+            const roleCandidatesList = document.getElementById('roleCandidatesList');
+            roleCandidatesList.innerHTML = '';
+            addRoleCandidateField();
+
+            // Clear email fields
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`roleEmail${i}`).value = '';
+            }
+
+            document.getElementById('roleModal').classList.add('show');
+        }
+
+        function editRole(role) {
+            document.getElementById('roleModalTitle').textContent = 'Edit Role';
+            document.getElementById('editingRoleId').value = role.id;
+            document.getElementById('rolePosition').value = role.position;
+            document.getElementById('roleStatus').value = role.status;
+
+            // Load candidates
+            const roleCandidatesList = document.getElementById('roleCandidatesList');
+            roleCandidatesList.innerHTML = '';
+            role.candidates.forEach(candidate => {
+                addRoleCandidateField(candidate.name, candidate.id);
+            });
+
+            // Load emails
+            for (let i = 1; i <= 5; i++) {
+                document.getElementById(`roleEmail${i}`).value = role.allowed_emails[i - 1] || '';
+            }
+
+            document.getElementById('roleModal').classList.add('show');
+        }
+
+        function hideRoleModal() {
+            document.getElementById('roleModal').classList.remove('show');
+            document.getElementById('roleModalMessage').classList.remove('show');
+        }
+
+        function addRoleCandidateField(name = '', id = null) {
+            const roleCandidatesList = document.getElementById('roleCandidatesList');
+            const candidateItem = document.createElement('div');
+            candidateItem.className = 'candidate-item';
+            candidateItem.dataset.localId = roleCandidateCounter++;
+            if (id) {
+                candidateItem.dataset.candidateId = id;
+            }
+
+            candidateItem.innerHTML = `
+                <input type="text" placeholder="Enter candidate name" value="${name}" class="role-candidate-name-input">
+                <button type="button" class="btn-remove-candidate" onclick="this.parentElement.remove()">Remove</button>
+            `;
+
+            roleCandidatesList.appendChild(candidateItem);
+        }
+
+        function getRoleCandidatesFromModal() {
+            const candidateItems = document.querySelectorAll('#roleCandidatesList .candidate-item');
+            const candidates = [];
+            candidateItems.forEach(item => {
+                const input = item.querySelector('.role-candidate-name-input');
+                const name = input.value.trim();
+                if (name) {
+                    const candidate = {name: name};
+                    if (item.dataset.candidateId) {
+                        candidate.id = item.dataset.candidateId;
+                    }
+                    candidates.push(candidate);
+                }
+            });
+            return candidates;
+        }
+
+        function saveRole() {
+            const roleId = document.getElementById('editingRoleId').value;
+            const position = document.getElementById('rolePosition').value.trim();
+            const status = document.getElementById('roleStatus').value;
+            const candidates = getRoleCandidatesFromModal();
+            const emails = [];
+
+            for (let i = 1; i <= 5; i++) {
+                const email = document.getElementById(`roleEmail${i}`).value.trim();
+                if (email) {
+                    emails.push(email);
+                }
+            }
+
+            const roleData = {
+                position: position,
+                candidates: candidates,
+                allowed_emails: emails,
+                status: status
+            };
+
+            const isEdit = roleId !== '';
+            const url = isEdit ? `/api/roles/${roleId}` : '/api/roles';
+            const method = isEdit ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(roleData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.message || 'Failed to save role');
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    showRoleModalMessage(data.message, 'success');
+                    setTimeout(() => {
+                        hideRoleModal();
+                        loadRoles();
+                    }, 1500);
+                } else {
+                    showRoleModalMessage(data.message, 'error');
+                }
+            })
+            .catch(error => {
+                showRoleModalMessage(error.message || 'Error saving role', 'error');
+            });
+        }
+
+        function deleteRole(roleId, position, hasVotes) {
+            if (hasVotes) {
+                if (!confirm(`Cannot delete "${position}" because it has existing votes. Mark as expired instead?`)) {
+                    return;
+                }
+                // Update status to expired instead of deleting
+                fetch(`/api/roles/${roleId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({status: 'expired'})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showMessage(`Role "${position}" marked as expired`, 'success');
+                        loadRoles();
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showMessage('Error updating role status', 'error');
+                });
+            } else {
+                if (!confirm(`Are you sure you want to delete "${position}"? This cannot be undone.`)) {
+                    return;
+                }
+                fetch(`/api/roles/${roleId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showMessage(data.message, 'success');
+                        loadRoles();
+                    } else {
+                        showMessage(data.message, 'error');
+                    }
+                })
+                .catch(error => {
+                    showMessage('Error deleting role', 'error');
+                });
+            }
+        }
+
+        function showRoleModalMessage(text, type) {
+            const messageDiv = document.getElementById('roleModalMessage');
+            messageDiv.textContent = text;
+            messageDiv.className = 'message ' + type + ' show';
+
+            setTimeout(() => {
+                messageDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        // Load roles on page load
+        loadRoles();
     </script>
 </body>
 </html>

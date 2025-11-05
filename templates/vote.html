@@ -484,21 +484,29 @@
             <h1>Blind Voting</h1>
             <p class="subtitle">Cast your votes confidentially</p>
 
-            <div class="position-header">
+            <div class="email-section">
+                <label for="voterEmail">Your Email</label>
+                <input type="email" id="voterEmail" placeholder="Enter your email to see available positions" autocomplete="email">
+                <div id="emailPrompt" style="color: #666; font-size: 0.9em; margin-top: 8px;">
+                    Enter your email and press Enter to continue
+                </div>
+            </div>
+
+            <!-- Role Selector (shown after email is entered) -->
+            <div id="roleSelectorSection" style="display: none; background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+                <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Select a Position to Vote On:</label>
+                <select id="roleSelector" onchange="onRoleChange()" style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;">
+                    <option value="">-- Select a position --</option>
+                </select>
+            </div>
+
+            <div class="position-header" id="positionHeader" style="display: none;">
                 <h2 id="positionName">Position</h2>
             </div>
 
-            <div class="blind-note">
+            <div class="blind-note" id="blindNote" style="display: none;">
                 <strong>This is a blind vote</strong>
                 Results will only be revealed after all votes are submitted
-            </div>
-
-            <div class="email-section">
-                <label for="voterEmail">Your Email</label>
-                <input type="email" id="voterEmail" placeholder="Enter your email and press Enter" autocomplete="email">
-                <div id="emailPrompt" style="color: #666; font-size: 0.9em; margin-top: 8px; display: none;">
-                    Please enter your email above to see candidates
-                </div>
             </div>
 
             <div class="progress-bar" id="progressBar" style="display: none;">
@@ -553,6 +561,9 @@
         let voterProgress = [];
         let currentCandidateId = null;
         let selectedChoice = null;
+        let currentRoleId = null;  // For multi-role mode
+        let availableRoles = [];   // List of all roles
+        let isMultiRoleMode = false;  // Toggle between legacy and multi-role
 
         function getEmailFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
@@ -570,6 +581,46 @@
         }
 
         function loadConfig() {
+            // First, try to load roles (multi-role mode)
+            fetch('/api/roles?status=active')
+                .then(response => response.json())
+                .then(rolesData => {
+                    if (rolesData.success && rolesData.roles && rolesData.roles.length > 0) {
+                        // Multi-role mode
+                        isMultiRoleMode = true;
+                        availableRoles = rolesData.roles;
+                        setupMultiRoleMode();
+                    } else {
+                        // Fall back to legacy single-position mode
+                        isMultiRoleMode = false;
+                        loadLegacyConfig();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading roles, falling back to legacy mode:', error);
+                    isMultiRoleMode = false;
+                    loadLegacyConfig();
+                });
+        }
+
+        function setupMultiRoleMode() {
+            const loadingDiv = document.getElementById('loadingDiv');
+            const votingDiv = document.getElementById('votingDiv');
+
+            loadingDiv.style.display = 'none';
+            votingDiv.style.display = 'block';
+
+            // Prefill email if in URL
+            prefillEmail();
+
+            // Check if email is already filled (from URL)
+            const email = document.getElementById('voterEmail').value.trim();
+            if (email) {
+                loadRolesForVoter(email);
+            }
+        }
+
+        function loadLegacyConfig() {
             fetch('/api/config')
                 .then(response => response.json())
                 .then(data => {
@@ -607,6 +658,77 @@
                 });
         }
 
+        function loadRolesForVoter(email) {
+            if (!email) return;
+
+            // Filter roles where this email is in allowed_emails
+            const voterRoles = availableRoles.filter(role => {
+                const allowedEmails = role.allowed_emails.map(e => e.toLowerCase());
+                return allowedEmails.includes(email.toLowerCase());
+            });
+
+            if (voterRoles.length === 0) {
+                showGlobalMessage('Your email is not authorized to vote on any positions', 'error');
+                return;
+            }
+
+            // Hide email prompt and show role selector
+            document.getElementById('emailPrompt').style.display = 'none';
+            const roleSelectorSection = document.getElementById('roleSelectorSection');
+            const roleSelector = document.getElementById('roleSelector');
+
+            roleSelectorSection.style.display = 'block';
+
+            // Populate role selector with only authorized roles
+            roleSelector.innerHTML = '<option value="">-- Select a position --</option>';
+            voterRoles.forEach(role => {
+                const option = document.createElement('option');
+                option.value = role.id;
+                option.textContent = role.position;
+                roleSelector.appendChild(option);
+            });
+
+            // Check if role_id is in URL and voter is authorized
+            const urlParams = new URLSearchParams(window.location.search);
+            const roleIdFromURL = urlParams.get('role_id');
+            if (roleIdFromURL) {
+                const authorizedRole = voterRoles.find(r => r.id === roleIdFromURL);
+                if (authorizedRole) {
+                    roleSelector.value = roleIdFromURL;
+                    onRoleChange();
+                }
+            }
+        }
+
+        function onRoleChange() {
+            const roleSelector = document.getElementById('roleSelector');
+            currentRoleId = roleSelector.value;
+
+            if (!currentRoleId) {
+                // Hide everything if no role selected
+                document.getElementById('positionHeader').style.display = 'none';
+                document.getElementById('blindNote').style.display = 'none';
+                document.getElementById('candidatesList').innerHTML = '';
+                document.getElementById('progressBar').style.display = 'none';
+                return;
+            }
+
+            // Find selected role
+            const role = availableRoles.find(r => r.id === currentRoleId);
+            if (!role) return;
+
+            // Show and update position display
+            document.getElementById('positionHeader').style.display = 'block';
+            document.getElementById('blindNote').style.display = 'block';
+            document.getElementById('positionName').textContent = role.position;
+
+            // Load voter progress for this role
+            const email = document.getElementById('voterEmail').value.trim();
+            if (email) {
+                loadVoterProgress(email);
+            }
+        }
+
         function loadVoterProgress(email) {
             if (!email) return;
 
@@ -614,24 +736,73 @@
             document.getElementById('emailPrompt').style.display = 'none';
             document.getElementById('progressBar').style.display = 'block';
 
-            fetch('/api/voter/progress', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ voter_email: email })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    voterProgress = data.candidates;
+            if (isMultiRoleMode && currentRoleId) {
+                // Multi-role mode: fetch actual vote data for this role and voter
+                const role = availableRoles.find(r => r.id === currentRoleId);
+                if (!role) return;
+
+                // Fetch votes to determine which candidates have been voted on
+                fetch('/api/voter/role-progress', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        voter_email: email,
+                        role_id: currentRoleId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        voterProgress = data.candidates;
+                        updateCandidatesList();
+                        updateProgress(data.votes_submitted, data.total_candidates);
+                    } else {
+                        // Fallback: show all as not voted
+                        voterProgress = role.candidates.map(c => ({
+                            id: c.id,
+                            name: c.name,
+                            voted: false,
+                            vote: null
+                        }));
+                        updateCandidatesList();
+                        updateProgress(0, role.candidates.length);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading voter progress:', error);
+                    // Fallback: show all as not voted
+                    voterProgress = role.candidates.map(c => ({
+                        id: c.id,
+                        name: c.name,
+                        voted: false,
+                        vote: null
+                    }));
                     updateCandidatesList();
-                    updateProgress(data.votes_submitted, data.total_candidates);
-                }
-            })
-            .catch(error => {
-                console.error('Error loading voter progress:', error);
-            });
+                    updateProgress(0, role.candidates.length);
+                });
+            } else {
+                // Legacy mode: use old API
+                fetch('/api/voter/progress', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ voter_email: email })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        voterProgress = data.candidates;
+                        updateCandidatesList();
+                        updateProgress(data.votes_submitted, data.total_candidates);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading voter progress:', error);
+                });
+            }
         }
 
         function updateProgress(voted, total) {
@@ -745,21 +916,34 @@
                 return;
             }
 
+            // In multi-role mode, ensure a role is selected
+            if (isMultiRoleMode && !currentRoleId) {
+                showModalMessage('Please select a role/position first', 'error');
+                return;
+            }
+
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submitting...';
+
+            const voteData = {
+                voter_email: email,
+                candidate_id: currentCandidateId,
+                choice: selectedChoice,
+                feedback: feedback
+            };
+
+            // Include role_id if in multi-role mode
+            if (isMultiRoleMode && currentRoleId) {
+                voteData.role_id = currentRoleId;
+            }
 
             fetch('/api/vote', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    voter_email: email,
-                    candidate_id: currentCandidateId,
-                    choice: selectedChoice,
-                    feedback: feedback
-                })
+                body: JSON.stringify(voteData)
             })
             .then(response => response.json())
             .then(data => {
@@ -853,15 +1037,19 @@
             });
         }
 
-        // Listen for email changes to load progress
+        // Listen for email changes to load roles or progress
         document.addEventListener('DOMContentLoaded', function() {
             const emailInput = document.getElementById('voterEmail');
             if (emailInput) {
                 // Load on blur (Tab key or clicking away)
                 emailInput.addEventListener('blur', function() {
                     const email = this.value.trim();
-                    if (email && currentConfig) {
-                        loadVoterProgress(email);
+                    if (email) {
+                        if (isMultiRoleMode) {
+                            loadRolesForVoter(email);
+                        } else if (currentConfig) {
+                            loadVoterProgress(email);
+                        }
                     }
                 });
 
@@ -869,8 +1057,12 @@
                 emailInput.addEventListener('keypress', function(e) {
                     if (e.key === 'Enter') {
                         const email = this.value.trim();
-                        if (email && currentConfig) {
-                            loadVoterProgress(email);
+                        if (email) {
+                            if (isMultiRoleMode) {
+                                loadRolesForVoter(email);
+                            } else if (currentConfig) {
+                                loadVoterProgress(email);
+                            }
                         }
                     }
                 });
