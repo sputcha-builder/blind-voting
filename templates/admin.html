@@ -696,6 +696,11 @@
             </div>
 
             <div class="form-group" style="text-align: left;">
+                <label for="roleHiringManager">Hiring Manager Email *</label>
+                <input type="email" id="roleHiringManager" placeholder="hiring.manager@example.com" required>
+            </div>
+
+            <div class="form-group" style="text-align: left;">
                 <label>Candidates</label>
                 <div id="roleCandidatesList" class="candidates-list"></div>
                 <button type="button" class="btn-add-candidate" onclick="addRoleCandidateField()">
@@ -1002,7 +1007,9 @@
                                     <div class="role-header">
                                         <div>
                                             <div class="role-title">${role.position}</div>
-                                            <div style="color: #999; font-size: 0.9em;">Created: ${new Date(role.created_at).toLocaleDateString()}</div>
+                                            <div style="color: #999; font-size: 0.9em;">
+                                                Hiring Manager: ${role.hiring_manager || 'Not specified'} | Created: ${new Date(role.created_at).toLocaleDateString()}
+                                            </div>
                                         </div>
                                         <span class="role-status-badge ${role.status}">${role.status}</span>
                                     </div>
@@ -1048,6 +1055,7 @@
             document.getElementById('roleModalTitle').textContent = 'Create New Role';
             document.getElementById('editingRoleId').value = '';
             document.getElementById('rolePosition').value = '';
+            document.getElementById('roleHiringManager').value = '';
             document.getElementById('roleStatus').value = 'active';
 
             // Clear candidate fields
@@ -1067,6 +1075,7 @@
             document.getElementById('roleModalTitle').textContent = 'Edit Role';
             document.getElementById('editingRoleId').value = role.id;
             document.getElementById('rolePosition').value = role.position;
+            document.getElementById('roleHiringManager').value = role.hiring_manager || '';
             document.getElementById('roleStatus').value = role.status;
 
             // Load candidates
@@ -1126,6 +1135,7 @@
         function saveRole() {
             const roleId = document.getElementById('editingRoleId').value;
             const position = document.getElementById('rolePosition').value.trim();
+            const hiringManager = document.getElementById('roleHiringManager').value.trim();
             const status = document.getElementById('roleStatus').value;
             const candidates = getRoleCandidatesFromModal();
             const emails = [];
@@ -1139,6 +1149,7 @@
 
             const roleData = {
                 position: position,
+                hiring_manager: hiringManager,
                 candidates: candidates,
                 allowed_emails: emails,
                 status: status

@@ -121,6 +121,7 @@ def save_roles(data):
             role = Role(
                 id=uuid.UUID(role_data['id']) if 'id' in role_data else uuid.uuid4(),
                 position=role_data['position'],
+                hiring_manager=role_data.get('hiring_manager'),
                 status=role_data.get('status', 'active'),
                 created_at=datetime.fromisoformat(role_data['created_at']) if role_data.get('created_at') else datetime.utcnow(),
                 updated_at=datetime.fromisoformat(role_data['updated_at']) if role_data.get('updated_at') else None
@@ -164,6 +165,7 @@ def save_role(role_data):
         if existing_role:
             # Update existing role
             existing_role.position = role_data['position']
+            existing_role.hiring_manager = role_data.get('hiring_manager')
             existing_role.status = role_data.get('status', 'active')
             existing_role.updated_at = datetime.utcnow()
 
@@ -192,6 +194,7 @@ def save_role(role_data):
             role = Role(
                 id=role_id,
                 position=role_data['position'],
+                hiring_manager=role_data.get('hiring_manager'),
                 status=role_data.get('status', 'active'),
                 created_at=datetime.utcnow()
             )

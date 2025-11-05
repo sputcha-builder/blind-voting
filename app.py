@@ -112,6 +112,7 @@ def migrate_config_to_roles():
     role = {
         'id': role_id,
         'position': config.get('position', ''),
+        'hiring_manager': 'sputcha@starbucks.com',  # Default hiring manager for legacy migrations
         'candidates': config.get('candidates', []),
         'allowed_emails': config.get('allowed_emails', []),
         'status': 'active',
@@ -868,6 +869,7 @@ def create_role():
         data = request.json
 
         position = data.get('position', '').strip()
+        hiring_manager = data.get('hiring_manager', '').strip()
         candidates = data.get('candidates', [])
         allowed_emails = data.get('allowed_emails', [])
         status = data.get('status', 'active')
@@ -877,6 +879,13 @@ def create_role():
     # Validate position
     if not position:
         return jsonify({'success': False, 'message': 'Position is required'}), 400
+
+    # Validate hiring manager (required)
+    if not hiring_manager:
+        return jsonify({'success': False, 'message': 'Hiring manager email is required'}), 400
+
+    if '@' not in hiring_manager or '.' not in hiring_manager:
+        return jsonify({'success': False, 'message': f'Invalid hiring manager email format: {hiring_manager}'}), 400
 
     # Validate and build candidates list
     valid_candidates = []
@@ -924,6 +933,7 @@ def create_role():
         role = {
             'id': role_id,
             'position': position,
+            'hiring_manager': hiring_manager,
             'candidates': valid_candidates,
             'allowed_emails': valid_emails,
             'status': status,
@@ -1045,6 +1055,15 @@ def update_role(role_id):
         position = data['position'].strip()
         if position:
             role['position'] = position
+
+    # Update hiring manager if provided
+    if 'hiring_manager' in data:
+        hiring_manager = data['hiring_manager'].strip()
+        if hiring_manager:
+            # Validate email format
+            if '@' not in hiring_manager or '.' not in hiring_manager:
+                return jsonify({'success': False, 'message': f'Invalid hiring manager email format: {hiring_manager}'}), 400
+            role['hiring_manager'] = hiring_manager
 
     # Update candidates if provided (can only add, not remove if votes exist)
     if 'candidates' in data:

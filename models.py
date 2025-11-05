@@ -21,6 +21,7 @@ class Role(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     position = Column(String(255), nullable=False)
+    hiring_manager = Column(String(255), nullable=True)  # Email of hiring manager (nullable for migration)
     status = Column(String(50), default='active')  # active, fulfilled, expired
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -35,6 +36,7 @@ class Role(Base):
         return {
             'id': str(self.id),
             'position': self.position,
+            'hiring_manager': self.hiring_manager,
             'candidates': [c.to_dict() for c in self.candidates],
             'allowed_emails': [v.email for v in self.allowed_voters],
             'status': self.status,
