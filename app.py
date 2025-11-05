@@ -1122,13 +1122,14 @@ def update_role(role_id):
     # Save updated role
     try:
         role['updated_at'] = datetime.now().isoformat()
-        roles_data['roles'][role_index] = role
-        save_roles(roles_data)
+        # Use save_role() instead of save_roles() to update only this role
+        # save_roles() tries to delete ALL roles which causes foreign key violations
+        updated_role = save_role(role)
 
         return jsonify({
             'success': True,
             'message': 'Role updated successfully',
-            'role': role
+            'role': updated_role
         })
     except Exception as e:
         import traceback
