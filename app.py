@@ -52,6 +52,44 @@ def add_security_headers(response):
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     return response
 
+# Global error handlers to return JSON instead of HTML for API endpoints
+@app.errorhandler(404)
+def not_found_error(error):
+    """Handle 404 errors - return JSON for API endpoints, HTML for pages"""
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'message': 'Endpoint not found'}), 404
+    return render_template('vote.html'), 404  # Redirect to voting page for non-API 404s
+
+@app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors - return JSON for API endpoints"""
+    if request.path.startswith('/api/'):
+        return jsonify({'success': False, 'message': f'Internal server error: {str(error)}'}), 500
+    return f"Internal server error: {str(error)}", 500
+
+@app.errorhandler(Exception)
+def handle_exception(error):
+    """Global exception handler - return JSON for API endpoints"""
+    import traceback
+    error_details = str(error)
+
+    # Log the full traceback for debugging
+    if not IS_PRODUCTION:
+        print(f"\n{'='*60}\nUNHANDLED EXCEPTION:\n{traceback.format_exc()}{'='*60}\n")
+
+    # Return JSON for API endpoints
+    if request.path.startswith('/api/'):
+        # Check for common database errors
+        if 'UUID' in error_details or 'uuid' in error_details.lower():
+            return jsonify({'success': False, 'message': 'Invalid ID format. Please try again or refresh the page.'}), 400
+        elif 'database' in error_details.lower() or 'connection' in error_details.lower():
+            return jsonify({'success': False, 'message': 'Database connection error. Please try again in a moment.'}), 500
+        else:
+            return jsonify({'success': False, 'message': f'An error occurred: {error_details}'}), 500
+
+    # For non-API endpoints, return simple error page
+    return f"An error occurred: {error_details}", 500
+
 def migrate_config_to_roles():
     """Migrate existing config.json to roles format (one-time migration)"""
     # Check if roles already exist
@@ -826,12 +864,15 @@ def save_configuration():
 @app.route('/api/roles', methods=['POST'])
 def create_role():
     """Create a new role/position"""
-    data = request.json
+    try:
+        data = request.json
 
-    position = data.get('position', '').strip()
-    candidates = data.get('candidates', [])
-    allowed_emails = data.get('allowed_emails', [])
-    status = data.get('status', 'active')
+        position = data.get('position', '').strip()
+        candidates = data.get('candidates', [])
+        allowed_emails = data.get('allowed_emails', [])
+        status = data.get('status', 'active')
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Invalid request data: {str(e)}'}), 400
 
     # Validate position
     if not position:
@@ -876,60 +917,70 @@ def create_role():
         status = 'active'
 
     # Create new role
-    import uuid
-    role_id = str(uuid.uuid4())
+    try:
+        import uuid
+        role_id = str(uuid.uuid4())
 
-    role = {
-        'id': role_id,
-        'position': position,
-        'candidates': valid_candidates,
-        'allowed_emails': valid_emails,
-        'status': status,
-        'created_at': datetime.now().isoformat()
-    }
+        role = {
+            'id': role_id,
+            'position': position,
+            'candidates': valid_candidates,
+            'allowed_emails': valid_emails,
+            'status': status,
+            'created_at': datetime.now().isoformat()
+        }
 
-    # Load existing roles and add new one
-    roles_data = load_roles()
-    roles_data['roles'].append(role)
-    save_roles(roles_data)
+        # Load existing roles and add new one
+        roles_data = load_roles()
+        roles_data['roles'].append(role)
+        save_roles(roles_data)
 
-    return jsonify({
-        'success': True,
-        'message': f'Role "{position}" created successfully',
-        'role': role
-    })
+        return jsonify({
+            'success': True,
+            'message': f'Role "{position}" created successfully',
+            'role': role
+        })
+    except Exception as e:
+        import traceback
+        print(f"Error creating role: {traceback.format_exc()}")
+        return jsonify({'success': False, 'message': f'Error creating role: {str(e)}'}), 500
 
 @app.route('/api/roles', methods=['GET'])
 def list_roles():
     """List all roles with optional status filter"""
-    status_filter = request.args.get('status')  # active, fulfilled, expired
+    try:
+        status_filter = request.args.get('status')  # active, fulfilled, expired
 
-    roles_data = load_roles()
-    roles = roles_data['roles']
+        roles_data = load_roles()
+        roles = roles_data['roles']
 
-    # Filter by status if provided
-    if status_filter:
-        roles = [r for r in roles if r.get('status') == status_filter]
+        # Filter by status if provided
+        if status_filter:
+            roles = [r for r in roles if r.get('status') == status_filter]
 
-    # Add vote counts to each role
-    votes_data = load_votes()
-    for role in roles:
-        role_votes = [v for v in votes_data['votes'] if v.get('role_id') == role['id']]
-        total_voters = len(role.get('allowed_emails', []))
-        total_candidates = len(role.get('candidates', []))
-        expected_votes = total_voters * total_candidates
+        # Add vote counts to each role
+        votes_data = load_votes()
+        for role in roles:
+            role_votes = [v for v in votes_data['votes'] if v.get('role_id') == role['id']]
+            total_voters = len(role.get('allowed_emails', []))
+            total_candidates = len(role.get('candidates', []))
+            expected_votes = total_voters * total_candidates
 
-        role['vote_stats'] = {
-            'total_votes': len(role_votes),
-            'expected_votes': expected_votes,
-            'is_complete': len(role_votes) >= expected_votes if expected_votes > 0 else False
-        }
+            role['vote_stats'] = {
+                'total_votes': len(role_votes),
+                'expected_votes': expected_votes,
+                'is_complete': len(role_votes) >= expected_votes if expected_votes > 0 else False
+            }
 
-    return jsonify({
-        'success': True,
-        'roles': roles,
-        'total': len(roles)
-    })
+        return jsonify({
+            'success': True,
+            'roles': roles,
+            'total': len(roles)
+        })
+    except Exception as e:
+        import traceback
+        print(f"Error listing roles: {traceback.format_exc()}")
+        return jsonify({'success': False, 'message': f'Error loading roles: {str(e)}'}), 500
 
 @app.route('/api/roles/<role_id>', methods=['GET'])
 def get_role(role_id):
@@ -960,23 +1011,28 @@ def get_role(role_id):
 @app.route('/api/roles/<role_id>', methods=['PUT'])
 def update_role(role_id):
     """Update a role (status, add candidates, add voters)"""
-    data = request.json
+    try:
+        data = request.json
 
-    roles_data = load_roles()
-    role_index = None
+        roles_data = load_roles()
+        role_index = None
 
-    for i, role in enumerate(roles_data['roles']):
-        if role['id'] == role_id:
-            role_index = i
-            break
+        for i, role in enumerate(roles_data['roles']):
+            if role['id'] == role_id:
+                role_index = i
+                break
 
-    if role_index is None:
-        return jsonify({'success': False, 'message': 'Role not found'}), 404
+        if role_index is None:
+            return jsonify({'success': False, 'message': 'Role not found'}), 404
 
-    role = roles_data['roles'][role_index]
-    votes_data = load_votes()
-    role_votes = [v for v in votes_data['votes'] if v.get('role_id') == role_id]
-    has_votes = len(role_votes) > 0
+        role = roles_data['roles'][role_index]
+        votes_data = load_votes()
+        role_votes = [v for v in votes_data['votes'] if v.get('role_id') == role_id]
+        has_votes = len(role_votes) > 0
+    except Exception as e:
+        import traceback
+        print(f"Error loading role data: {traceback.format_exc()}")
+        return jsonify({'success': False, 'message': f'Error loading role: {str(e)}'}), 500
 
     # Update status if provided
     if 'status' in data:
@@ -1064,15 +1120,20 @@ def update_role(role_id):
             role['allowed_emails'] = valid_emails
 
     # Save updated role
-    role['updated_at'] = datetime.now().isoformat()
-    roles_data['roles'][role_index] = role
-    save_roles(roles_data)
+    try:
+        role['updated_at'] = datetime.now().isoformat()
+        roles_data['roles'][role_index] = role
+        save_roles(roles_data)
 
-    return jsonify({
-        'success': True,
-        'message': 'Role updated successfully',
-        'role': role
-    })
+        return jsonify({
+            'success': True,
+            'message': 'Role updated successfully',
+            'role': role
+        })
+    except Exception as e:
+        import traceback
+        print(f"Error saving role: {traceback.format_exc()}")
+        return jsonify({'success': False, 'message': f'Error saving role: {str(e)}'}), 500
 
 @app.route('/api/roles/<role_id>', methods=['DELETE'])
 def delete_role(role_id):
