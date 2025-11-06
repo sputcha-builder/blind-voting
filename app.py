@@ -948,15 +948,14 @@ def create_role():
             'created_at': datetime.now().isoformat()
         }
 
-        # Load existing roles and add new one
-        roles_data = load_roles()
-        roles_data['roles'].append(role)
-        save_roles(roles_data)
+        # Use save_role() to add only this role without affecting existing roles
+        # save_roles() would try to delete all roles, causing foreign key violations
+        saved_role = save_role(role)
 
         return jsonify({
             'success': True,
             'message': f'Role "{position}" created successfully',
-            'role': role
+            'role': saved_role
         })
     except Exception as e:
         import traceback
