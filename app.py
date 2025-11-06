@@ -27,6 +27,14 @@ if USE_DATABASE:
     try:
         init_db()
         print("✓ Database initialized successfully")
+
+        # Run database migration for hiring_manager column
+        from migrate_add_hiring_manager import migrate_database
+        print("Running database migrations...")
+        if migrate_database(verbose=False):
+            print("✓ Database migrations completed successfully")
+        else:
+            print("⚠ Database migration skipped (not needed or failed)")
     except Exception as e:
         print(f"✗ Database initialization failed: {e}")
         raise
