@@ -1,5 +1,6 @@
-from flask import Flask, render_template, request, jsonify, redirect
+from flask import Flask, render_template, request, jsonify, redirect, session, url_for
 import os
+from functools import wraps
 from datetime import datetime
 from anthropic import Anthropic
 
@@ -13,6 +14,8 @@ from storage import (
 )
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-prod')
+ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin')
 
 # Initialize Anthropic Claude client (API key from environment variable)
 claude_client = None
@@ -21,6 +24,32 @@ if os.environ.get('ANTHROPIC_API_KEY'):
 
 # Detect if running in production (Render sets PORT environment variable)
 IS_PRODUCTION = 'RENDER' in os.environ or os.environ.get('PORT') == '10000'
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            if request.path.startswith('/api/'):
+                return jsonify({'success': False, 'message': 'Authentication required'}), 401
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        password = request.form.get('password')
+        if password == ADMIN_PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('admin_page'))
+        else:
+            return render_template('login.html', error="Invalid access code")
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
 
 # Initialize database if using PostgreSQL
 if USE_DATABASE:
@@ -440,11 +469,13 @@ def get_voter_role_progress_api():
     })
 
 @app.route('/results')
+@login_required
 def results_page():
     """Display results page"""
     return render_template('results.html')
 
 @app.route('/api/results', methods=['GET'])
+@login_required
 def get_results():
     """Get voting results (only if all voters have voted on all candidates)"""
     config = load_config()
@@ -495,6 +526,7 @@ def get_results():
     })
 
 @app.route('/api/results/<role_id>', methods=['GET'])
+@login_required
 def get_role_results(role_id):
     """Get voting results for a specific role (only if all voters have voted on all candidates)"""
     role = get_role_by_id(role_id)
@@ -550,11 +582,13 @@ def get_role_results(role_id):
     })
 
 @app.route('/admin')
+@login_required
 def admin_page():
     """Admin page for managing votes"""
     return render_template('admin.html')
 
 @app.route('/api/reset', methods=['POST'])
+@login_required
 def reset_votes():
     """Reset all votes and configuration (admin only)"""
     save_votes({'votes': []})
@@ -765,6 +799,7 @@ def get_config():
     })
 
 @app.route('/api/config', methods=['POST'])
+@login_required
 def save_configuration():
     """Save voting configuration - allows adding candidates even after voting starts"""
     data = request.json
@@ -871,6 +906,7 @@ def save_configuration():
     })
 
 @app.route('/api/roles', methods=['POST'])
+@login_required
 def create_role():
     """Create a new role/position"""
     try:
@@ -1026,6 +1062,7 @@ def get_role(role_id):
     })
 
 @app.route('/api/roles/<role_id>', methods=['PUT'])
+@login_required
 def update_role(role_id):
     """Update a role (status, add candidates, add voters)"""
     try:
@@ -1163,6 +1200,7 @@ def update_role(role_id):
         return jsonify({'success': False, 'message': f'Error saving role: {str(e)}'}), 500
 
 @app.route('/api/roles/<role_id>', methods=['DELETE'])
+@login_required
 def delete_role(role_id):
     """Delete a role (only if no votes exist)"""
     roles_data = load_roles()
