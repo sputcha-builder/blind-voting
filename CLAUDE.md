@@ -6,12 +6,31 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Blind Voting System - A Flask web application for conducting anonymous interview feedback collection. Voters submit "Inclined" or "Not Inclined" decisions with feedback for candidates. Results are hidden until all voters complete their assessments.
 
+## Development Workflow
+
+**IMPORTANT: Always test changes locally before committing and pushing to the repository.**
+
+### Local Testing Process
+1. Make your code changes
+2. Start the development server: `./start-dev.sh`
+3. Test your changes in the browser at `http://localhost:5001`
+4. Stop the development server: `./stop-dev.sh` (or Ctrl+C)
+5. Only after confirming changes work correctly, commit and push
+
+### Quick Commands
+```bash
+./start-dev.sh                      # Start dev server (installs deps, runs on port 5001)
+./stop-dev.sh                       # Stop dev server
+```
+
 ## Commands
 
 ### Development
 ```bash
 pip3 install -r requirements.txt    # Install dependencies
 python3 app.py                      # Run development server (port 5001)
+./start-dev.sh                      # Easier: Start dev server with auto setup
+./stop-dev.sh                       # Stop dev server
 ```
 
 ### Production (Render.com)

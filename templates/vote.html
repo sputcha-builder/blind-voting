@@ -529,6 +529,15 @@
                 <div class="candidate-label" id="modalCandidateName">Candidate Name</div>
             </div>
 
+            <div id="feedbackSection" class="feedback-section show">
+                <label id="feedbackLabel">Enter your interview feedback</label>
+                <textarea id="feedbackText" placeholder="Enter your notes first, then decide if you're inclined or not inclined based on your assessment"></textarea>
+                <div class="feedback-hint">Optional but encouraged</div>
+                <button type="button" class="btn-ai-summarize" onclick="summarizeWithAI()" id="aiSummarizeBtn">
+                    ✨ Summarize with AI
+                </button>
+            </div>
+
             <div class="vote-options">
                 <div class="vote-option inclined" data-choice="Inclined" onclick="selectChoice('Inclined')">
                     Inclined
@@ -536,15 +545,6 @@
                 <div class="vote-option not-inclined" data-choice="Not Inclined" onclick="selectChoice('Not Inclined')">
                     Not Inclined
                 </div>
-            </div>
-
-            <div id="feedbackSection" class="feedback-section">
-                <label id="feedbackLabel">Feedback</label>
-                <textarea id="feedbackText" placeholder="Enter your raw interview notes here..."></textarea>
-                <div class="feedback-hint">Optional but encouraged</div>
-                <button type="button" class="btn-ai-summarize" onclick="summarizeWithAI()" id="aiSummarizeBtn">
-                    ✨ Summarize with AI
-                </button>
             </div>
 
             <div class="modal-buttons">
@@ -850,7 +850,7 @@
 
             document.getElementById('modalCandidateName').textContent = candidateName;
             document.getElementById('feedbackText').value = '';
-            document.getElementById('feedbackSection').classList.remove('show');
+            document.getElementById('feedbackLabel').textContent = 'Enter your interview feedback';
             document.getElementById('submitBtn').disabled = true;
 
             // Clear previous selection
@@ -888,8 +888,7 @@
                 }
             });
 
-            // Show feedback section with appropriate label
-            const feedbackSection = document.getElementById('feedbackSection');
+            // Update feedback label based on choice
             const feedbackLabel = document.getElementById('feedbackLabel');
 
             if (choice === 'Inclined') {
@@ -898,7 +897,6 @@
                 feedbackLabel.textContent = 'Summary, Flags & Reasons not to hire';
             }
 
-            feedbackSection.classList.add('show');
             document.getElementById('submitBtn').disabled = false;
         }
 
