@@ -531,7 +531,7 @@
 
             <div id="feedbackSection" class="feedback-section show">
                 <label id="feedbackLabel">Enter your interview feedback</label>
-                <textarea id="feedbackText" placeholder="Enter your notes first, then decide if you're inclined or not inclined based on your assessment"></textarea>
+                <textarea id="feedbackText" placeholder="Copy or enter your raw interview notes and reasons to hire or not hire. Click the button below to generate a formal summary using AI."></textarea>
                 <div class="feedback-hint">Optional but encouraged</div>
                 <button type="button" class="btn-ai-summarize" onclick="summarizeWithAI()" id="aiSummarizeBtn">
                     ✨ Summarize with AI
@@ -994,11 +994,6 @@
                 return;
             }
 
-            if (!selectedChoice) {
-                showModalMessage('Please select Inclined or Not Inclined first', 'error');
-                return;
-            }
-
             const aiBtn = document.getElementById('aiSummarizeBtn');
             const originalText = aiBtn.textContent;
             aiBtn.disabled = true;
@@ -1011,7 +1006,7 @@
                 },
                 body: JSON.stringify({
                     notes: feedbackText,
-                    choice: selectedChoice
+                    choice: selectedChoice || null
                 })
             })
             .then(response => response.json())
