@@ -494,9 +494,9 @@
 
             <!-- Role Selector (shown after email is entered) -->
             <div id="roleSelectorSection" style="display: none; background: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-                <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Select a Position to Vote On:</label>
+                <label style="display: block; margin-bottom: 8px; color: #555; font-weight: 500;">Select the role you are interviewing for:</label>
                 <select id="roleSelector" onchange="onRoleChange()" style="width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 16px;">
-                    <option value="">-- Select a position --</option>
+                    <option value="">-- Select a role --</option>
                 </select>
             </div>
 
@@ -505,12 +505,11 @@
             </div>
 
             <div class="blind-note" id="blindNote" style="display: none;">
-                <strong>This is a blind vote</strong>
-                Results will only be revealed after all votes are submitted
+                Share your evaluation independently; feedback will be visible once everyone is done.
             </div>
 
             <div class="progress-bar" id="progressBar" style="display: none;">
-                Voted on <span id="progressText">0 of 0</span> candidates
+                Feedback entered for <span id="progressText">0 of 0</span> candidates
             </div>
 
             <div class="candidates-list" id="candidatesList">
@@ -525,7 +524,7 @@
     <div id="votingModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Voting for</h3>
+                <h3>Feedback for</h3>
                 <div class="candidate-label" id="modalCandidateName">Candidate Name</div>
             </div>
 
@@ -548,7 +547,7 @@
             </div>
 
             <div class="modal-buttons">
-                <button class="btn-submit" onclick="submitCurrentVote()" id="submitBtn" disabled>Submit Vote</button>
+                <button class="btn-submit" onclick="submitCurrentVote()" id="submitBtn" disabled>Submit Feedback</button>
                 <button class="btn-cancel" onclick="closeModal()">Cancel</button>
             </div>
 
@@ -680,7 +679,7 @@
             roleSelectorSection.style.display = 'block';
 
             // Populate role selector with only authorized roles
-            roleSelector.innerHTML = '<option value="">-- Select a position --</option>';
+            roleSelector.innerHTML = '<option value="">-- Select a role --</option>';
             voterRoles.forEach(role => {
                 const option = document.createElement('option');
                 option.value = role.id;
@@ -830,13 +829,13 @@
                     <div class="candidate-card-header">
                         <div class="candidate-name">${candidate.name}</div>
                         <span class="vote-status ${candidate.voted ? 'voted' : 'not-voted'}">
-                            ${candidate.voted ? 'Voted ✓' : 'Not Voted'}
+                            ${candidate.voted ? 'Done ✓' : 'Not started'}
                         </span>
                     </div>
                     ${choiceDisplay}
                     <button class="btn-vote ${candidate.voted ? 'secondary' : 'primary'}"
                             onclick="openVotingModal('${candidate.id}', '${candidate.name}', ${candidate.voted})">
-                        ${candidate.voted ? 'Edit Vote' : 'Vote on ' + candidate.name}
+                        ${candidate.voted ? 'Edit Feedback' : 'Enter feedback for ' + candidate.name}
                     </button>
                 `;
 
