@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Critical Rules
+
+- **NEVER commit or push unless explicitly asked by the user.** Wait for explicit instructions like "commit" or "commit and push" before making any git commits or pushes.
+
 ## Project Overview
 
 Blind Voting System - A Flask web application for conducting anonymous interview feedback collection. Voters submit "Inclined" or "Not Inclined" decisions with feedback for candidates. Results are hidden until all voters complete their assessments.

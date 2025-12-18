@@ -1000,7 +1000,13 @@
                     const rolesList = document.getElementById('rolesList');
 
                     if (data.roles && data.roles.length > 0) {
-                        rolesList.innerHTML = data.roles.map(role => {
+                        // Sort roles by status: active first, then fulfilled, then expired
+                        const statusOrder = { 'active': 0, 'fulfilled': 1, 'expired': 2 };
+                        const sortedRoles = data.roles.sort((a, b) => {
+                            return (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99);
+                        });
+
+                        rolesList.innerHTML = sortedRoles.map(role => {
                             const voteProgress = role.vote_stats.total_votes + '/' + role.vote_stats.expected_votes;
                             const isComplete = role.vote_stats.is_complete;
 
