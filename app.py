@@ -626,17 +626,17 @@ def summarize_feedback():
         else:
             choice_context = "The interviewer has not yet indicated their hiring decision. If their sentiment is clear from the notes, mention it in the summary."
 
-        user_prompt = f"""Format these interview notes into a well-structured document. IMPORTANT: Do not lose any information from the original notes.
+        user_prompt = f"""Format these interview notes into a well-structured document. IMPORTANT: Do not lose any information from the original notes. Keep everything in FIRST PERSON (the interviewer's voice) - do not say "the interviewer" or switch to third person.
 
 {choice_context}
 
 Format the output as:
 
 **Summary:**
-[2-3 sentence high-level overview of the candidate's performance and interviewer's overall impression]
+[2-3 sentence high-level overview in first person, e.g. "I found the candidate strong in..." not "The interviewer found..."]
 
 **Pros:**
-- [All positive observations, strengths, and reasons to hire - be specific and detailed]
+- [All positive observations, strengths, and reasons to hire - be specific and detailed, in first person]
 
 **Watchouts:**
 - [Areas of concern, gaps, or things to monitor - be specific. If none, write "None identified"]
@@ -645,7 +645,7 @@ Format the output as:
 - [Serious concerns or deal-breakers, if any. If none, write "None identified"]
 
 **Detailed Notes:**
-[Reformat the raw notes into clean, readable paragraphs or bullet points. Preserve ALL specific details, examples, quotes, and observations from the original. Do not summarize or omit anything - just clean up formatting and organization.]
+[Reformat the raw notes into clean, readable paragraphs or bullet points. Preserve ALL specific details, examples, quotes, and observations from the original. Keep in first person voice. Do not summarize or omit anything - just clean up formatting and organization.]
 
 Raw interview notes:
 {raw_notes}"""
