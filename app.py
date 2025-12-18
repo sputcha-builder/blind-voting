@@ -617,53 +617,42 @@ def summarize_feedback():
         return jsonify({'success': False, 'message': 'Please provide notes to summarize'}), 400
 
     try:
-        # Create prompt based on voting choice
+        # Create prompt - choice may or may not be provided
+        choice_context = ""
         if choice == 'Inclined':
-            user_prompt = f"""Please summarize these interview notes into a concise, well-structured format (max 250 words, about half an A4 page).
+            choice_context = "The interviewer has indicated they are INCLINED to hire this candidate. Reflect this positive leaning in the summary."
+        elif choice == 'Not Inclined':
+            choice_context = "The interviewer has indicated they are NOT INCLINED to hire this candidate. Reflect this negative leaning in the summary."
+        else:
+            choice_context = "The interviewer has not yet indicated their hiring decision. If their sentiment is clear from the notes, mention it in the summary."
+
+        user_prompt = f"""Format these interview notes into a well-structured document. IMPORTANT: Do not lose any information from the original notes.
+
+{choice_context}
 
 Format the output as:
-**Summary:**
-[Brief 2-3 sentence overview]
 
-**Strengths:**
-- [Bullet point 1]
-- [Bullet point 2]
-- [etc]
+**Summary:**
+[2-3 sentence high-level overview of the candidate's performance and interviewer's overall impression]
+
+**Pros:**
+- [All positive observations, strengths, and reasons to hire - be specific and detailed]
 
 **Watchouts:**
-- [Bullet point 1]
-- [Bullet point 2]
-- [etc]
+- [Areas of concern, gaps, or things to monitor - be specific. If none, write "None identified"]
 
-Be professional, specific, and actionable.
+**Red Flags:**
+- [Serious concerns or deal-breakers, if any. If none, write "None identified"]
 
-Raw interview notes:
-{raw_notes}"""
-        else:  # Not Inclined
-            user_prompt = f"""Please summarize these interview notes into a concise, well-structured format (max 250 words, about half an A4 page).
-
-Format the output as:
-**Summary:**
-[Brief 2-3 sentence overview]
-
-**Flags/Concerns:**
-- [Bullet point 1]
-- [Bullet point 2]
-- [etc]
-
-**Reasons Not to Hire:**
-- [Bullet point 1]
-- [Bullet point 2]
-- [etc]
-
-Be professional, specific, and actionable.
+**Detailed Notes:**
+[Reformat the raw notes into clean, readable paragraphs or bullet points. Preserve ALL specific details, examples, quotes, and observations from the original. Do not summarize or omit anything - just clean up formatting and organization.]
 
 Raw interview notes:
 {raw_notes}"""
 
         response = claude_client.messages.create(
             model="claude-3-5-haiku-20241022",  # Fast and economical
-            max_tokens=500,
+            max_tokens=2000,  # Increased to preserve all details
             temperature=0.3,
             messages=[
                 {"role": "user", "content": user_prompt}
