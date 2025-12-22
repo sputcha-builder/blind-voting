@@ -79,6 +79,17 @@
             font-size: 0.95em;
         }
 
+        .override-banner {
+            background: #fff8e1;
+            border: 2px solid #ffb300;
+            border-radius: 12px;
+            color: #7a5200;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            text-align: center;
+            font-size: 0.98em;
+        }
+
         .candidate-section {
             border: 2px solid #e0e0e0;
             border-radius: 15px;
@@ -401,7 +412,7 @@
             fetch(`/api/results/${selectedRoleId}`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.complete) {
+                    if (data.complete || data.override) {
                         displayResults(data);
                     } else {
                         displayWaiting(data);
@@ -446,6 +457,15 @@
                 positionHTML = `
                     <div class="position-header">
                         <h2>${data.position}</h2>
+                    </div>
+                `;
+            }
+
+            let overrideHTML = '';
+            if (data.override && !data.complete) {
+                overrideHTML = `
+                    <div class="override-banner">
+                        Results override enabled. Showing partial results (${data.votes_received} of ${data.votes_needed} vote(s) received).
                     </div>
                 `;
             }
@@ -531,6 +551,7 @@
 
             contentDiv.innerHTML = `
                 ${positionHTML}
+                ${overrideHTML}
                 ${candidatesHTML}
             `;
         }
@@ -551,6 +572,8 @@
                         if (data.complete) {
                             displayResults(data);
                             stopAutoRefresh();
+                        } else if (data.override) {
+                            displayResults(data);
                         } else {
                             displayWaiting(data);
                         }

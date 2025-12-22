@@ -25,6 +25,7 @@ class Role(Base):
     status = Column(String(50), default='active')  # active, fulfilled, expired
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    allow_results_override = Column(Boolean, default=False, nullable=False)
 
     # Relationships
     candidates = relationship('Candidate', back_populates='role', cascade='all, delete-orphan')
@@ -40,6 +41,7 @@ class Role(Base):
             'candidates': [c.to_dict() for c in self.candidates],
             'allowed_emails': [v.email for v in self.allowed_voters],
             'status': self.status,
+            'allow_results_override': self.allow_results_override,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }

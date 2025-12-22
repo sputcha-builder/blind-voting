@@ -123,6 +123,7 @@ def save_roles(data):
                 position=role_data['position'],
                 hiring_manager=role_data.get('hiring_manager'),
                 status=role_data.get('status', 'active'),
+                allow_results_override=role_data.get('allow_results_override', False),
                 created_at=datetime.fromisoformat(role_data['created_at']) if role_data.get('created_at') else datetime.utcnow(),
                 updated_at=datetime.fromisoformat(role_data['updated_at']) if role_data.get('updated_at') else None
             )
@@ -167,6 +168,7 @@ def save_role(role_data):
             existing_role.position = role_data['position']
             existing_role.hiring_manager = role_data.get('hiring_manager')
             existing_role.status = role_data.get('status', 'active')
+            existing_role.allow_results_override = role_data.get('allow_results_override', False)
             existing_role.updated_at = datetime.utcnow()
 
             # Update candidates (delete old, add new)
@@ -196,6 +198,7 @@ def save_role(role_data):
                 position=role_data['position'],
                 hiring_manager=role_data.get('hiring_manager'),
                 status=role_data.get('status', 'active'),
+                allow_results_override=role_data.get('allow_results_override', False),
                 created_at=datetime.utcnow()
             )
 

@@ -540,9 +540,11 @@ def get_role_results(role_id):
     total_voters = len(role.get('allowed_emails', []))
     total_candidates = len(role.get('candidates', []))
     expected_votes = total_voters * total_candidates
+    allow_results_override = role.get('allow_results_override', False)
+    is_complete = len(role_votes) >= expected_votes if expected_votes > 0 else False
 
     # Check if voting is complete for this role
-    if len(role_votes) < expected_votes:
+    if not is_complete and not allow_results_override:
         return jsonify({
             'complete': False,
             'votes_received': len(role_votes),
@@ -551,7 +553,8 @@ def get_role_results(role_id):
             'position': role.get('position', ''),
             'total_voters': total_voters,
             'total_candidates': total_candidates,
-            'role_id': role_id
+            'role_id': role_id,
+            'override': allow_results_override
         })
 
     # Build results for each candidate in this role
@@ -572,13 +575,16 @@ def get_role_results(role_id):
         })
 
     return jsonify({
-        'complete': True,
+        'complete': is_complete,
         'position': role.get('position', ''),
         'total_voters': total_voters,
         'total_candidates': total_candidates,
         'candidates': candidates_results,
         'role_id': role_id,
-        'status': role.get('status', 'active')
+        'status': role.get('status', 'active'),
+        'override': allow_results_override,
+        'votes_received': len(role_votes),
+        'votes_needed': expected_votes
     })
 
 @app.route('/admin')
@@ -906,6 +912,7 @@ def create_role():
         candidates = data.get('candidates', [])
         allowed_emails = data.get('allowed_emails', [])
         status = data.get('status', 'active')
+        allow_results_override = bool(data.get('allow_results_override', False))
     except Exception as e:
         return jsonify({'success': False, 'message': f'Invalid request data: {str(e)}'}), 400
 
@@ -970,6 +977,7 @@ def create_role():
             'candidates': valid_candidates,
             'allowed_emails': valid_emails,
             'status': status,
+            'allow_results_override': allow_results_override,
             'created_at': datetime.now().isoformat()
         }
 
@@ -1097,6 +1105,10 @@ def update_role(role_id):
             if '@' not in hiring_manager or '.' not in hiring_manager:
                 return jsonify({'success': False, 'message': f'Invalid hiring manager email format: {hiring_manager}'}), 400
             role['hiring_manager'] = hiring_manager
+
+    # Update results override if provided
+    if 'allow_results_override' in data:
+        role['allow_results_override'] = bool(data['allow_results_override'])
 
     # Update candidates if provided (can only add, not remove if votes exist)
     if 'candidates' in data:

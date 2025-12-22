@@ -730,6 +730,16 @@
                 </select>
             </div>
 
+            <div class="form-group" style="text-align: left;">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="roleResultsOverride">
+                    Allow results override (show results before all votes)
+                </label>
+                <div style="color: #888; font-size: 0.9em; margin-top: 6px;">
+                    Use when you need to view partial results and feedback.
+                </div>
+            </div>
+
             <div class="confirm-buttons">
                 <button class="btn-confirm yes" onclick="saveRole()" id="saveRoleBtn">Save Role</button>
                 <button class="btn-confirm no" onclick="hideRoleModal()">Cancel</button>
@@ -1009,6 +1019,7 @@
                         rolesList.innerHTML = sortedRoles.map(role => {
                             const voteProgress = role.vote_stats.total_votes + '/' + role.vote_stats.expected_votes;
                             const isComplete = role.vote_stats.is_complete;
+                            const canViewResults = isComplete || role.allow_results_override;
 
                             return `
                                 <div class="role-card">
@@ -1034,11 +1045,15 @@
                                             <span class="role-info-label">Vote Progress</span>
                                             <span class="role-info-value">${voteProgress} ${isComplete ? '✓' : ''}</span>
                                         </div>
+                                        <div class="role-info-item">
+                                            <span class="role-info-label">Results Override</span>
+                                            <span class="role-info-value">${role.allow_results_override ? 'On' : 'Off'}</span>
+                                        </div>
                                     </div>
                                     <div class="role-actions">
                                         <button class="btn-role-action edit" onclick='editRole(${JSON.stringify(role)})'>Edit</button>
                                         <button class="btn-role-action delete" onclick="deleteRole('${role.id}', '${role.position}', ${role.vote_stats.total_votes > 0})">Delete</button>
-                                        ${isComplete ? `<button class="btn-role-action view-results" onclick="window.location.href='/results?role_id=${role.id}'">View Results</button>` : ''}
+                                        ${canViewResults ? `<button class="btn-role-action view-results" onclick="window.location.href='/results?role_id=${role.id}'">View Results</button>` : ''}
                                     </div>
                                 </div>
                             `;
@@ -1065,6 +1080,7 @@
             document.getElementById('rolePosition').value = '';
             document.getElementById('roleHiringManager').value = '';
             document.getElementById('roleStatus').value = 'active';
+            document.getElementById('roleResultsOverride').checked = false;
 
             // Clear candidate fields
             const roleCandidatesList = document.getElementById('roleCandidatesList');
@@ -1085,6 +1101,7 @@
             document.getElementById('rolePosition').value = role.position;
             document.getElementById('roleHiringManager').value = role.hiring_manager || '';
             document.getElementById('roleStatus').value = role.status;
+            document.getElementById('roleResultsOverride').checked = role.allow_results_override || false;
 
             // Load candidates
             const roleCandidatesList = document.getElementById('roleCandidatesList');
@@ -1145,6 +1162,7 @@
             const position = document.getElementById('rolePosition').value.trim();
             const hiringManager = document.getElementById('roleHiringManager').value.trim();
             const status = document.getElementById('roleStatus').value;
+            const allowResultsOverride = document.getElementById('roleResultsOverride').checked;
             const candidates = getRoleCandidatesFromModal();
             const emails = [];
 
@@ -1160,7 +1178,8 @@
                 hiring_manager: hiringManager,
                 candidates: candidates,
                 allowed_emails: emails,
-                status: status
+                status: status,
+                allow_results_override: allowResultsOverride
             };
 
             const isEdit = roleId !== '';
